@@ -34,14 +34,23 @@ async function iniciar() {
     (t) => auth.verifyIdToken(t, true),
     (q) => api.operacion.run(q),
     (q) =>
-      require("./reporte_diario.cjs").generarReporte(db, q.auth.uid, q.fecha, q.tipo),
+      require("./reporte_diario.cjs").generarReporte(
+        db,
+        q.auth.uid,
+        q.fecha,
+        q.tipo,
+      ),
+    require("./web.cjs").ORIGEN,
   );
   const archivoApk = require("node:path").join(
     __dirname,
     "SIPROPAN-1.6-listados.apk",
   );
   const servidor = http.createServer(
-    require("./descargas.cjs").conDescargas(operar, archivoApk),
+    require("./web.cjs").conWeb(
+      require("./descargas.cjs").conDescargas(operar, archivoApk),
+      { db, verificar: (t) => auth.verifyIdToken(t, true) },
+    ),
   );
   servidor.requestTimeout = 30000;
   servidor.headersTimeout = 10000;

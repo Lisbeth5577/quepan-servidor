@@ -1,0 +1,307 @@
+:root {
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  color: #30271f;
+  background: #f7f4ee;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+header {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 32px max(24px, calc((100% - 1180px) / 2));
+  background: #342c25;
+  color: #fff6e5;
+}
+.marca {
+  background: #c78c47;
+  color: #251a10;
+  min-width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  font-size: 28px;
+  font-weight: 800;
+}
+h1 {
+  font-size: clamp(24px, 3vw, 34px);
+  margin: 4px 0 8px;
+}
+header p {
+  margin: 0;
+  color: #e2d7c9;
+}
+.institucion {
+  font-size: 13px;
+}
+nav {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  max-width: 1228px;
+  margin: auto;
+  padding: 18px 24px;
+  border-bottom: 1px solid #ddd2c3;
+}
+button {
+  font: inherit;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: #76502f;
+  color: white;
+  padding: 11px 17px;
+  cursor: pointer;
+  font-weight: 600;
+}
+button:hover {
+  background: #5c3b21;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid #b27b31;
+  outline-offset: 3px;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+nav button {
+  background: transparent;
+  color: #554636;
+}
+nav button:hover,
+nav .activo {
+  background: #e8dccb;
+  color: #392817;
+}
+main {
+  max-width: 1228px;
+  margin: auto;
+  padding: 26px 24px 50px;
+}
+.cabecera {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+.etiqueta {
+  color: #766750;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0;
+}
+h2 {
+  margin: 5px 0 18px;
+  font-size: 29px;
+}
+h3 {
+  margin: 0 0 18px;
+}
+.secundario {
+  background: white;
+  color: #684729;
+  border-color: #cfc0ad;
+}
+.secundario:hover {
+  background: #efe4d5;
+}
+#mensaje {
+  padding: 13px 16px;
+  border-left: 4px solid #bf8b48;
+  background: #f0e7d7;
+  white-space: pre-wrap;
+}
+#mensaje.error {
+  border-color: #af3e2f;
+  background: #fae8e3;
+  color: #832d22;
+}
+#mensaje.exito {
+  border-color: #41815a;
+  background: #e7f1e9;
+  color: #285b3b;
+}
+section {
+  background: white;
+  border: 1px solid #e3d9cc;
+  border-radius: 10px;
+  padding: 22px;
+  margin-top: 22px;
+}
+.campos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+label {
+  display: grid;
+  gap: 7px;
+  min-width: 190px;
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+}
+input,
+select {
+  border: 1px solid #beaf9c;
+  border-radius: 6px;
+  padding: 11px;
+  background: white;
+  font: inherit;
+  color: #30271f;
+  min-width: 0;
+  width: 100%;
+}
+.detalle {
+  display: grid;
+  grid-template-columns: minmax(180px, 2fr) minmax(100px, 1fr) auto;
+  gap: 14px;
+  align-items: end;
+  margin: 12px 0;
+}
+.detalle button {
+  background: #f3eee6;
+  color: #684729;
+}
+.acciones {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+.tabla-contenedor {
+  overflow-x: auto;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  text-align: left;
+  font-size: 14px;
+}
+th {
+  background: #f4efe7;
+}
+th,
+td {
+  padding: 13px 12px;
+  border-bottom: 1px solid #ece5da;
+  white-space: nowrap;
+}
+tbody tr:hover {
+  background: #faf7f1;
+}
+td button {
+  padding: 7px 11px;
+}
+.nota,
+#ayuda-detalles {
+  color: #796d5e;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.vacio {
+  text-align: center;
+  color: #796d5e;
+  padding: 30px;
+}
+footer {
+  padding: 24px;
+  text-align: center;
+  font-size: 12px;
+  color: #796d5e;
+}
+[hidden] {
+  display: none !important;
+}
+@media (max-width: 650px) {
+  header {
+    padding: 24px;
+    gap: 14px;
+  }
+  .marca {
+    min-width: 52px;
+    height: 52px;
+    font-size: 22px;
+  }
+  .detalle {
+    grid-template-columns: 1fr 95px;
+  }
+  .detalle button {
+    grid-column: 1/-1;
+  }
+  section {
+    padding: 15px;
+  }
+  main {
+    padding: 24px 15px;
+  }
+  nav {
+    padding: 12px;
+  }
+  nav button {
+    padding: 9px 12px;
+  }
+  label {
+    min-width: 100%;
+  }
+}
+
+textarea {
+  font: inherit;
+  width: 100%;
+  min-height: 90px;
+}
+a {
+  color: #76502f;
+}
+.herramientas {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.tarjeta {
+  max-width: 520px;
+  margin: 30px auto;
+}
+.tarjeta label {
+  margin: 16px 0;
+}
+td {
+  white-space: normal;
+  min-width: 100px;
+}
+.detalle-texto {
+  white-space: pre-wrap;
+}
+#usuario {
+  font-size: 14px;
+}
+#buscar {
+  max-width: 350px;
+}
+.sesion {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.estado {
+  font-weight: bold;
+}
+.receta {
+  padding: 16px;
+  border-bottom: 1px solid #ddd;
+}

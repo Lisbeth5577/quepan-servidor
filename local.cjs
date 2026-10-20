@@ -14,7 +14,7 @@ const estados = {
   "failed-precondition": 409,
   "resource-exhausted": 429,
 };
-function crearManejador(verificar, operar, reportar) {
+function crearManejador(verificar, operar, reportar, origenWeb) {
   return async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Content-Type-Options", "nosniff");
@@ -35,7 +35,7 @@ function crearManejador(verificar, operar, reportar) {
         error: { status: "not-found", message: "Ruta no disponible" },
       });
     // La app nativa y Postman no envian Origin. No se admite uso desde otras webs.
-    if (req.headers.origin)
+    if (req.headers.origin && req.headers.origin !== origenWeb)
       return responder(403, {
         error: {
           status: "permission-denied",

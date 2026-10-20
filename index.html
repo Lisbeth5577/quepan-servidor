@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>SIPROPAN · Panadería San Carlos · UMG</title>
+    <link rel="stylesheet" href="/web/panaderia.css" />
+    <script src="/web/panaderia.js" defer></script>
+  </head>
+  <body>
+    <header>
+      <div class="marca">SC</div>
+      <div>
+        <p class="institucion">Universidad Mariano Gálvez de Guatemala</p>
+        <h1>Panadería San Carlos</h1>
+        <p>SIPROPAN · Pedidos, producción e inventario</p>
+      </div>
+    </header>
+    <main>
+      <section id="acceso" class="tarjeta">
+        <h2>Iniciar sesión</h2>
+        <p>Utiliza la misma cuenta asignada en SIPROPAN Android.</p>
+        <form id="login">
+          <label
+            >Correo<input
+              id="correo"
+              type="email"
+              required
+              autocomplete="username"
+              maxlength="254" /></label
+          ><label
+            >Contraseña<input
+              id="clave"
+              type="password"
+              required
+              autocomplete="current-password" /></label
+          ><button type="submit">Entrar</button>
+        </form>
+        <p class="nota">
+          La primera conexión puede tardar alrededor de un minuto. No cierres la
+          página mientras inicia.
+        </p>
+        <p><a href="/">Descargar aplicación Android</a></p>
+      </section>
+      <p id="mensaje" role="status" aria-live="polite">
+        Ingresa con tu cuenta para consultar y gestionar la panadería.
+      </p>
+      <div id="aplicacion" hidden>
+        <div class="sesion">
+          <strong id="usuario"></strong
+          ><button id="salir" class="secundario">Cerrar sesión</button
+          ><a href="/">Aplicación Android</a>
+        </div>
+        <nav id="modulos" aria-label="Módulos"></nav>
+        <div class="cabecera">
+          <div>
+            <p class="etiqueta">Gestión de la panadería</p>
+            <h2 id="titulo">Productos</h2>
+          </div>
+          <button id="actualizar" class="secundario">Actualizar</button>
+        </div>
+        <div class="herramientas">
+          <label
+            >Buscar en este listado<input
+              id="buscar"
+              type="search"
+              placeholder="Nombre, sucursal, estado o pedido" /></label
+          ><button id="nuevo" hidden>Nuevo registro</button>
+        </div>
+        <section id="captura" hidden>
+          <h3 id="titulo-formulario"></h3>
+          <form id="registro">
+            <div id="campos" class="campos"></div>
+            <div id="detalles"></div>
+            <div class="acciones">
+              <button type="button" id="agregar">Agregar producto</button
+              ><button type="submit">Guardar</button
+              ><button type="button" id="cancelar" class="secundario">
+                Cancelar
+              </button>
+            </div>
+          </form>
+        </section>
+        <section id="reporte" hidden>
+          <h3>Descargar listado diario</h3>
+          <form id="descargar">
+            <div class="campos">
+              <label
+                >Fecha de Guatemala<input
+                  id="fecha-reporte"
+                  type="date"
+                  required /></label
+              ><label
+                >Tipo de listado<select id="tipo-reporte">
+                  <option value="pedidos">Solo pedidos registrados</option>
+                  <option value="programados">Solo pedidos programados</option>
+                  <option value="entregas">Solo entregas</option>
+                  <option value="despachos">Solo despachos</option>
+                  <option value="incidencias">Solo incidencias</option>
+                  <option value="reasignaciones">Solo reasignaciones</option>
+                  <option value="produccion">Solo producción</option>
+                  <option value="consumos">Solo consumos</option>
+                  <option value="entradas">
+                    Solo entradas de ingredientes
+                  </option>
+                  <option value="avisos">Solo avisos</option>
+                  <option value="intentos">Solo intentos de envío</option>
+                  <option value="todo">Todo el día</option>
+                </select></label
+              >
+            </div>
+            <p>Estado, unidad y ruta corresponden al momento de descargar.</p>
+            <button type="submit">Descargar CSV</button>
+          </form>
+        </section>
+        <section id="tabla">
+          <div class="tabla-contenedor">
+            <table>
+              <thead id="columnas"></thead>
+              <tbody id="filas"></tbody>
+            </table>
+          </div>
+          <p id="resumen" class="nota"></p>
+        </section>
+        <button id="reintentar" hidden>
+          Reintentar la misma solicitud pendiente
+        </button>
+      </div>
+    </main>
+    <footer>
+      Proyecto académico · Desarrollo Web · UMG · Datos compartidos con Android
+      mediante Firebase
+    </footer>
+  </body>
+</html>
