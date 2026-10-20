@@ -21,7 +21,9 @@ async function iniciar() {
   const db = r("firebase-admin/firestore").getFirestore();
   const auth = r("firebase-admin/auth").getAuth();
   await db.collection("productos").limit(1).get();
-  const servidor = http.createServer(crearManejador(t => auth.verifyIdToken(t, true), q => api.operacion.run(q)));
+  const operar = crearManejador(t => auth.verifyIdToken(t, true), q => api.operacion.run(q));
+  const archivoApk = require("node:path").join(__dirname, "SIPROPAN-1.4-internet.apk");
+  const servidor = http.createServer(require("./descargas.cjs").conDescargas(operar, archivoApk));
   servidor.requestTimeout = 30000;
   servidor.headersTimeout = 10000;
   const pararAvisos = iniciarAvisos(api, db);
