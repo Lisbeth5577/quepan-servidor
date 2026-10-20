@@ -56,7 +56,8 @@ function crearManejador(verificar, operar, reportar) {
           req.url,
           "https://sipropan.local",
         ).searchParams.get("fecha");
-        const reporte = await reportar({ auth: { uid: identidad.uid }, fecha });
+        const tipo = new URL(req.url, "https://sipropan.local").searchParams.get("tipo") || "todo";
+        const reporte = await reportar({ auth: { uid: identidad.uid }, fecha, tipo });
         res.writeHead(200, {
           "Content-Type": "text/csv; charset=utf-8",
           "Content-Disposition":
@@ -251,6 +252,7 @@ async function iniciar() {
         db,
         request.auth.uid,
         request.fecha,
+        request.tipo,
       ),
   );
   const pararAvisos = iniciarAvisos(api, db);

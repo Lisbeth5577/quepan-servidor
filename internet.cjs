@@ -34,11 +34,11 @@ async function iniciar() {
     (t) => auth.verifyIdToken(t, true),
     (q) => api.operacion.run(q),
     (q) =>
-      require("./reporte_diario.cjs").generarReporte(db, q.auth.uid, q.fecha),
+      require("./reporte_diario.cjs").generarReporte(db, q.auth.uid, q.fecha, q.tipo),
   );
   const archivoApk = require("node:path").join(
     __dirname,
-    "SIPROPAN-1.5-reportes.apk",
+    "SIPROPAN-1.6-listados.apk",
   );
   const servidor = http.createServer(
     require("./descargas.cjs").conDescargas(operar, archivoApk),

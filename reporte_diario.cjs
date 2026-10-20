@@ -70,10 +70,11 @@ async function nombres(db, coleccion, ids) {
   }
   return mapa;
 }
-async function generarReporte(db, uid, fecha) {
+async function generarReporte(db, uid, fecha, tipo = "todo") {
   d.exigir(uid, "Inicia sesion", "unauthenticated");
   const perfil = await db.collection("usuarios").doc(uid).get();
   d.gerente(perfil.data());
+  d.exigir(tipo === "todo" || Object.hasOwn(CATEGORIAS, tipo), "Tipo de listado no valido", "invalid-argument");
   const { inicio, fin } = limites(fecha);
   // Son consultas de solo lectura, paginadas. No se corta el listado a 250 filas.
   const durante = (coleccion, campo = "creado") =>
@@ -442,6 +443,7 @@ async function generarReporte(db, uid, fecha) {
       "",
       "No se encontraron registros para esta fecha.",
     ]);
+  if (tipo !== "todo") return listadoSeparado(tipo, fecha, filas, resumen);
   const csv =
     "\ufeffsep=;\r\n" +
     [encabezado, ...meta, ...filas]
@@ -450,4 +452,32 @@ async function generarReporte(db, uid, fecha) {
     "\r\n";
   return { archivo: `SIPROPAN_diario_${fecha}.csv`, csv, resumen };
 }
-module.exports = { limites, fechaHora, celda, generarReporte };
+// Una tabla por categoria: solo sus filas y las columnas que ayudan a leerla.
+const CATEGORIAS = {
+  pedidos: { secciones: ["PEDIDOS CREADOS"], columnas: [1,3,9,4,5,6,7,12] },
+  programados: { secciones: ["PEDIDOS PROGRAMADOS"], columnas: [3,9,4,5,6,7,12] },
+  entregas: { secciones: ["ENTREGAS"], columnas: [1,3,9,4,5,6,8,10,11,7] },
+  despachos: { secciones: ["DESPACHOS"], columnas: [1,3,9,8,10,11,7,12] },
+  incidencias: { secciones: ["INCIDENCIAS ABIERTAS EN EL DIA","INCIDENCIAS ATENDIDAS EN EL DIA"], columnas: [0,1,2,3,9,8,7,12] },
+  reasignaciones: { secciones: ["REASIGNACIONES"], columnas: [1,3,9,8,10,11,7,12] },
+  produccion: { secciones: ["PRODUCCION"], columnas: [1,2,4,5,6,8,7] },
+  consumos: { secciones: ["CONSUMO EN PRODUCCION"], columnas: [1,2,4,5,6,8] },
+  entradas: { secciones: ["MOVIMIENTOS DE INGREDIENTES"], columnas: [1,2,4,5,6,8,12] },
+  avisos: { secciones: ["AVISOS"], columnas: [1,2,7,12] },
+  intentos: { secciones: ["INTENTOS DE ENVIO DE AVISOS"], columnas: [1,2,7,12] },
+};
+const TITULOS = ["Actividad", "Fecha y hora Guatemala", "Identificador", "Pedido",
+  "Producto o ingrediente", "Cantidad", "Unidad de medida", "Estado actual", "Usuario",
+  "Sucursal", "Vehiculo actual", "Ruta actual", "Detalle"];
+function listadoSeparado(tipo, fecha, filas, resumen) {
+  const config = CATEGORIAS[tipo];
+  d.exigir(config, "Tipo de listado no valido", "invalid-argument");
+  const seleccion = filas.filter(f => config.secciones.includes(f[0]));
+  // Fecha/hora local ISO permite ordenar cronologicamente sin mezclar secciones.
+  seleccion.sort((a,b) => a[1].localeCompare(b[1]) || String(a[3] || a[2]).localeCompare(String(b[3] || b[2])) || a[4].localeCompare(b[4]));
+  const tabla = [config.columnas.map(i => TITULOS[i]), ...seleccion.map(f => config.columnas.map(i => f[i]))];
+  return { archivo: `SIPROPAN_${tipo}_${fecha}.csv`,
+    csv: "\ufeffsep=;\r\n" + tabla.map(f => f.map(celda).join(";")).join("\r\n") + "\r\n",
+    resumen, filas: seleccion.length, tipo };
+}
+module.exports = { limites, fechaHora, celda, generarReporte, listadoSeparado, CATEGORIAS };
