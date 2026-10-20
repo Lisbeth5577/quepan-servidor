@@ -4,41 +4,65 @@
 const http = require("node:http");
 const fs = require("node:fs");
 const { createRequire } = require("node:module");
-const r = createRequire(require("node:path").resolve(__dirname, "package.json"));
+const r = createRequire(
+  require("node:path").resolve(__dirname, "package.json"),
+);
 const { crearManejador, iniciarAvisos } = require("./local.cjs");
 async function iniciar() {
-  if (process.env.FIRESTORE_EMULATOR_HOST || process.env.FIREBASE_AUTH_EMULATOR_HOST)
+  if (
+    process.env.FIRESTORE_EMULATOR_HOST ||
+    process.env.FIREBASE_AUTH_EMULATOR_HOST
+  )
     throw Error("No usar emuladores en el alojamiento real");
   // Solo una cuenta de servicio del proyecto: nunca la sesion personal de Google.
   const archivo = process.env.GOOGLE_APPLICATION_CREDENTIALS;
   const credencial = JSON.parse(fs.readFileSync(archivo, "utf8"));
-  if (credencial.type !== "service_account" || credencial.project_id !== "sipropan-panaderia-san-carlos")
+  if (
+    credencial.type !== "service_account" ||
+    credencial.project_id !== "sipropan-panaderia-san-carlos"
+  )
     throw Error("Falta una cuenta de servicio propia de SIPROPAN");
   process.env.GCLOUD_PROJECT = credencial.project_id;
   const puerto = Number(process.env.PORT || 10000);
-  if (!Number.isInteger(puerto) || puerto < 1 || puerto > 65535) throw Error("Puerto invalido");
+  if (!Number.isInteger(puerto) || puerto < 1 || puerto > 65535)
+    throw Error("Puerto invalido");
   const api = r("./index.js");
   const db = r("firebase-admin/firestore").getFirestore();
   const auth = r("firebase-admin/auth").getAuth();
   await db.collection("productos").limit(1).get();
-  const operar = crearManejador(t => auth.verifyIdToken(t, true), q => api.operacion.run(q));
-  const archivoApk = require("node:path").join(__dirname, "SIPROPAN-1.4-internet.apk");
-  const servidor = http.createServer(require("./descargas.cjs").conDescargas(operar, archivoApk));
+  const operar = crearManejador(
+    (t) => auth.verifyIdToken(t, true),
+    (q) => api.operacion.run(q),
+    (q) =>
+      require("./reporte_diario.cjs").generarReporte(db, q.auth.uid, q.fecha),
+  );
+  const archivoApk = require("node:path").join(
+    __dirname,
+    "SIPROPAN-1.5-reportes.apk",
+  );
+  const servidor = http.createServer(
+    require("./descargas.cjs").conDescargas(operar, archivoApk),
+  );
   servidor.requestTimeout = 30000;
   servidor.headersTimeout = 10000;
   const pararAvisos = iniciarAvisos(api, db);
-  servidor.listen(puerto, "0.0.0.0", () => console.log("SIPROPAN listo detras del HTTPS del alojamiento."));
+  servidor.listen(puerto, "0.0.0.0", () =>
+    console.log("SIPROPAN listo detras del HTTPS del alojamiento."),
+  );
   const parar = async () => {
     await pararAvisos();
-    await new Promise(resolve => servidor.close(resolve));
+    await new Promise((resolve) => servidor.close(resolve));
     await db.terminate();
   };
   process.once("SIGTERM", parar);
   process.once("SIGINT", parar);
   return servidor;
 }
-if (require.main === module) iniciar().catch(() => {
-  console.error("No se pudo iniciar SIPROPAN. Revisar credencial privada, permisos y conexion.");
-  process.exitCode = 1;
-});
+if (require.main === module)
+  iniciar().catch(() => {
+    console.error(
+      "No se pudo iniciar SIPROPAN. Revisar credencial privada, permisos y conexion.",
+    );
+    process.exitCode = 1;
+  });
 module.exports = { iniciar };

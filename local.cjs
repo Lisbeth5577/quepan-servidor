@@ -14,7 +14,7 @@ const estados = {
   "failed-precondition": 409,
   "resource-exhausted": 429,
 };
-function crearManejador(verificar, operar) {
+function crearManejador(verificar, operar, reportar) {
   return async (req, res) => {
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Content-Type-Options", "nosniff");
@@ -26,7 +26,11 @@ function crearManejador(verificar, operar) {
     };
     if (req.method === "GET" && req.url === "/salud")
       return responder(200, { estado: "ACTIVO", servicio: "SIPROPAN local" });
-    if (req.url !== "/operacion" || req.method !== "POST")
+    const esReporte =
+      req.method === "GET" &&
+      req.url.startsWith("/reportes/diario.csv?") &&
+      typeof reportar === "function";
+    if (!esReporte && (req.url !== "/operacion" || req.method !== "POST"))
       return responder(404, {
         error: { status: "not-found", message: "Ruta no disponible" },
       });
@@ -46,6 +50,22 @@ function crearManejador(verificar, operar) {
           error: { status: "unauthenticated", message: "Inicia sesion" },
         });
       const identidad = await verificar(match[1]);
+      if (esReporte) {
+        fase = "operacion";
+        const fecha = new URL(
+          req.url,
+          "https://sipropan.local",
+        ).searchParams.get("fecha");
+        const reporte = await reportar({ auth: { uid: identidad.uid }, fecha });
+        res.writeHead(200, {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition":
+            'attachment; filename="' + reporte.archivo + '"',
+          "Content-Length": Buffer.byteLength(reporte.csv, "utf8"),
+        });
+        res.end(reporte.csv);
+        return;
+      }
       fase = "cuerpo";
       if (!(req.headers["content-type"] || "").startsWith("application/json"))
         return responder(415, {
@@ -102,8 +122,8 @@ function crearManejador(verificar, operar) {
     }
   };
 }
-function crearServidor(tls, verificar, operar) {
-  return https.createServer(tls, crearManejador(verificar, operar));
+function crearServidor(tls, verificar, operar, reportar) {
+  return https.createServer(tls, crearManejador(verificar, operar, reportar));
 }
 function iniciarAvisos(api, db, logger = console) {
   // Escuchas en tiempo real: no consultamos todo el inventario repetidamente.
@@ -226,6 +246,12 @@ async function iniciar() {
     },
     (t) => getAuth().verifyIdToken(t, true),
     (request) => api.operacion.run(request),
+    (request) =>
+      require("./reporte_diario.cjs").generarReporte(
+        db,
+        request.auth.uid,
+        request.fecha,
+      ),
   );
   const pararAvisos = iniciarAvisos(api, db);
   server.requestTimeout = 30000;
