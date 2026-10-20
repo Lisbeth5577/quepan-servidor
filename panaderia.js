@@ -187,6 +187,10 @@ async function cargarCatalogos() {
 }
 async function abrir(id) {
   modulo = id;
+  datos = [];
+  $("columnas").replaceChildren();
+  $("filas").replaceChildren();
+  $("resumen").textContent = "";
   $("titulo").textContent = nombres[id];
   $("captura").hidden = true;
   $("buscar").value = "";
@@ -211,10 +215,13 @@ async function abrir(id) {
   }
   try {
     mensaje("Consultando…");
-    datos = (await api("/api/datos?modulo=" + id)).filas;
+    const resultado = await api("/api/datos?modulo=" + id);
+    if (modulo !== id) return; // Una respuesta anterior no sustituye el modulo actual.
+    datos = resultado.filas;
     pintar();
     mensaje("Información actualizada.");
   } catch (e) {
+    if (modulo !== id) return;
     datos = [];
     pintar();
     mensaje(e.message, true);
@@ -448,7 +455,7 @@ function formulario(a, id = "") {
     detalle();
   }
   if (a === "producir") {
-    campo(
+    const producto = campo(
       "producto",
       "Producto",
       "text",
@@ -456,7 +463,19 @@ function formulario(a, id = "") {
         (p) => p.activo && (catalogos.recetas || []).some((r) => r.id === p.id),
       ),
     );
-    campo("cantidad", "Unidades a producir", "number");
+    const cantidad = campo("cantidad", "Unidades a producir", "number");
+    const sugerirLote = () => {
+      cantidad.value =
+        (catalogos.recetas || []).find((r) => r.id === producto.value)
+          ?.rendimiento || "";
+    };
+    producto.addEventListener("change", sugerirLote);
+    sugerirLote();
+    nodo(
+      "p",
+      "Se propone el lote de la receta para conservar la precisión de los ingredientes. Puedes ajustar la cantidad; el servidor valida el consumo y las existencias.",
+      $("campos"),
+    );
   }
   if (a === "entrada") {
     campo(
