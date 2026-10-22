@@ -53,7 +53,7 @@ function fechaHora(v) {
 }
 function celda(v) {
   let s = v == null ? "" : String(v);
-  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  if (typeof v !== "number" && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
   return '"' + s.replace(/"/g, '""') + '"';
 }
 const TITULOS = [
@@ -114,7 +114,10 @@ async function generarReporte(db, uid, fecha, tipo = "todo") {
     pedidos = map("pedidos");
   const dentro = (t) => fechaHora(t).slice(0, 10) === fecha,
     rows = [];
-  const visible = (p) => u.rol === "GERENTE" || p.sucursalId === u.sucursalId;
+  const visible = (p) =>
+    u.rol === "GERENTE" ||
+    p.sucursalId === u.sucursalId ||
+    p.origenId === u.sucursalId;
   function fila(cat, t, p = {}, l = {}, e = {}) {
     if (!visible(p)) return;
     const fh = fechaHora(t),
