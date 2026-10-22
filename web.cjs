@@ -1,204 +1,120 @@
 "use strict";
-// Adaptador web: reutiliza la autenticacion y las operaciones del APK.
-const fs = require("node:fs"),
-  path = require("node:path");
-const d = require("./domain");
+const fs = require("fs"),
+  path = require("path"),
+  d = require("./domain"),
+  { consultar } = require("./consultas.cjs");
 const ORIGEN = "https://sipropan-servidor.onrender.com";
-const PERMITIDOS = [
-  "productos",
-  "sucursales",
-  "pedidos",
-  "ingredientes",
-  "recetas",
-  "producciones",
-  "movimientos",
-  "incidencias",
-  "alertas",
-  "notificaciones",
-  "usuarios",
-];
-const CAMPOS = {
-  productos: [
-    "nombre",
-    "existencia",
-    "minimo",
-    "unidad",
-    "activo",
-    "recetaAcademica",
-  ],
-  ingredientes: ["nombre", "existencia", "minimo", "unidad", "activo"],
-  sucursales: ["nombre", "activo"],
-  usuarios: ["nombre", "rol", "sucursalId", "activo"],
-  pedidos: [
-    "sucursalId",
-    "vendedorUid",
-    "fechaEntrega",
-    "detalles",
-    "estado",
-    "creado",
-    "despachado",
-    "entregado",
-    "unidad",
-    "ruta",
-    "incidenciaId",
-  ],
-  recetas: ["nombre", "rendimiento", "ingredientes", "academica"],
-  producciones: [
-    "productoId",
-    "cantidad",
-    "consumos",
-    "estado",
-    "usuarioUid",
-    "creado",
-  ],
-  movimientos: ["ingredienteId", "cantidad", "tipo", "usuarioUid", "creado"],
-  incidencias: [
-    "pedidoId",
-    "vendedorUid",
-    "detalle",
-    "estado",
-    "creado",
-    "resuelto",
-    "nuevaUnidad",
-  ],
-  alertas: [
-    "nombre",
-    "productoId",
-    "activa",
-    "existencia",
-    "minimo",
-    "actualizado",
-  ],
-  notificaciones: [
-    "tipo",
-    "titulo",
-    "mensaje",
-    "estado",
-    "creado",
-    "enviados",
-    "fallos",
-  ],
-};
-function valor(v) {
-  if (v?.toDate) return v.toDate().toISOString();
-  if (Array.isArray(v)) return v.map(valor);
-  if (v && typeof v === "object")
-    return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, valor(x)]));
-  return v;
-}
-async function consultar(db, uid, modulo) {
-  d.exigir(
-    PERMITIDOS.includes(modulo),
-    "Consulta no disponible",
-    "invalid-argument",
-  );
-  const p = (await db.collection("usuarios").doc(uid).get()).data();
-  d.perfil(p);
-  const gerente = p.rol === "GERENTE";
-  d.exigir(
-    gerente ||
-      ["productos", "sucursales", "pedidos", "incidencias"].includes(modulo),
-    "Solo el gerente puede consultar este modulo",
-    "permission-denied",
-  );
-  let q = db.collection(modulo);
-  if (!gerente && ["pedidos", "incidencias"].includes(modulo))
-    q = q.where("vendedorUid", "==", uid);
-  if (!gerente && modulo === "sucursales")
-    q = q.where("__name__", "==", p.sucursalId);
-  const filas = [];
-  let ultimo;
-  do {
-    const pagina = await (ultimo ? q.startAfter(ultimo) : q)
-      .orderBy("__name__")
-      .limit(250)
-      .get();
-    for (const doc of pagina.docs) {
-      const x = doc.data();
-      filas.push({
-        id: doc.id,
-        ...Object.fromEntries(
-          CAMPOS[modulo]
-            .filter((k) => x[k] !== undefined)
-            .map((k) => [k, valor(x[k])]),
-        ),
-      });
-    }
-    if (pagina.size < 250) break;
-    ultimo = pagina.docs.at(-1);
-  } while (true);
-  return { filas };
-}
 function conWeb(
   siguiente,
-  { db, verificar, directorio = __dirname },
+  { db, verificar, directorio = __dirname, origen = ORIGEN },
 ) {
-  const estaticos = {
+  const conexiones = new Set();
+  const archivos = {
     "/web/": "index.html",
     "/web/index.html": "index.html",
     "/web/panaderia.js": "panaderia.js",
     "/web/panaderia.css": "panaderia.css",
+    "/web/pan-pixel.png": "pan-pixel.png",
   };
-  return async (req, res) => {
-    const url = new URL(req.url, "https://sipropan.local");
-    if (req.method === "GET" && Object.hasOwn(estaticos, url.pathname)) {
-      const nombre = estaticos[url.pathname];
-      res.writeHead(200, {
-        "Content-Type": nombre.endsWith(".html")
+  const manejar = async (req, res) => {
+    const url = new URL(req.url, origen);
+    if (req.method === "GET" && Object.hasOwn(archivos, url.pathname)) {
+      const file = archivos[url.pathname],
+        tipo = file.endsWith(".html")
           ? "text/html; charset=utf-8"
-          : nombre.endsWith(".js")
+          : file.endsWith(".js")
             ? "text/javascript; charset=utf-8"
-            : "text/css; charset=utf-8",
+            : file.endsWith(".png")
+              ? "image/png"
+              : "text/css; charset=utf-8";
+      res.writeHead(200, {
+        "Content-Type": tipo,
         "Cache-Control": "no-store",
         "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "no-referrer",
         "Content-Security-Policy":
           "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; img-src 'self' data:; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
-        "Referrer-Policy": "no-referrer",
       });
-      return res.end(fs.readFileSync(path.join(directorio, nombre)));
+      return res.end(fs.readFileSync(path.join(directorio, file)));
     }
     if (
       req.method !== "GET" ||
-      !["/api/perfil", "/api/datos"].includes(url.pathname)
+      !["/api/perfil", "/api/datos", "/api/eventos"].includes(url.pathname)
     )
       return siguiente(req, res);
     res.setHeader("Cache-Control", "no-store");
     res.setHeader("X-Content-Type-Options", "nosniff");
     try {
       d.exigir(
-        !req.headers.origin || req.headers.origin === ORIGEN,
+        !req.headers.origin || req.headers.origin === origen,
         "Origen web no permitido",
         "permission-denied",
       );
-      const match = /^Bearer ([^\s]+)$/.exec(req.headers.authorization || "");
-      d.exigir(match, "Inicia sesion", "unauthenticated");
+      const token = /^Bearer ([^\s]+)$/.exec(req.headers.authorization || "");
+      d.exigir(token, "Inicia sesión", "unauthenticated");
       let identidad;
       try {
-        identidad = await verificar(match[1]);
+        identidad = await verificar(token[1]);
       } catch {
         throw new d.ErrorNegocio(
-          "Sesion no valida o vencida",
+          "Sesión no válida o vencida",
           "unauthenticated",
         );
       }
-      let result;
-      if (url.pathname === "/api/perfil") {
-        const p = (
-          await db.collection("usuarios").doc(identidad.uid).get()
-        ).data();
-        d.perfil(p);
-        result = {
-          uid: identidad.uid,
-          nombre: p.nombre,
-          rol: p.rol,
-          sucursalId: p.sucursalId || null,
+      const p = (await db.doc("usuarios/" + identidad.uid).get()).data();
+      d.perfil(p);
+      if (url.pathname === "/api/eventos") {
+        let cerrado = false,
+          timer;
+        const paradas = [];
+        const cerrar = () => {
+          if (cerrado) return;
+          cerrado = true;
+          paradas.forEach((fn) => fn());
+          clearTimeout(timer);
+          clearInterval(ping);
+          clearTimeout(expiry);
+          conexiones.delete(cerrar);
+          if (!res.destroyed) res.end();
         };
-      } else
-        result = await consultar(
-          db,
-          identidad.uid,
-          url.searchParams.get("modulo"),
-        );
+        const ping = setInterval(() => {
+            if (!cerrado) res.write(": activo\n\n");
+          }, 20000),
+          expiry = setTimeout(cerrar, 45 * 60000);
+        res.on("close", cerrar);
+        conexiones.add(cerrar);
+        res.writeHead(200, {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-store",
+          Connection: "keep-alive",
+          "X-Accel-Buffering": "no",
+        });
+        const enviar = () => {
+          clearTimeout(timer);
+          if (!cerrado)
+            timer = setTimeout(() => {
+              if (!cerrado) res.write("event: actualizar\ndata: {}\n\n");
+            }, 200);
+        };
+        for (const c of [
+          "productos",
+          "inventario_sucursales",
+          "pedidos",
+          "sucursales",
+        ])
+          paradas.push(db.collection(c).onSnapshot(enviar, cerrar));
+        res.write(": conectado\n\n");
+        return;
+      }
+      const result =
+        url.pathname === "/api/perfil"
+          ? {
+              uid: identidad.uid,
+              nombre: p.nombre,
+              rol: p.rol,
+              sucursalId: p.sucursalId || null,
+            }
+          : await consultar(db, identidad.uid, url.searchParams.get("modulo"));
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
       res.end(JSON.stringify(result));
     } catch (e) {
@@ -221,5 +137,9 @@ function conWeb(
       );
     }
   };
+  manejar.cerrarConexiones = () => {
+    for (const cerrar of [...conexiones]) cerrar();
+  };
+  return manejar;
 }
 module.exports = { conWeb, consultar, ORIGEN };

@@ -13,6 +13,7 @@ const estados = {
   "not-found": 404,
   "failed-precondition": 409,
   "resource-exhausted": 429,
+  "already-exists": 409,
 };
 function crearManejador(verificar, operar, reportar, origenWeb) {
   return async (req, res) => {
@@ -56,8 +57,14 @@ function crearManejador(verificar, operar, reportar, origenWeb) {
           req.url,
           "https://sipropan.local",
         ).searchParams.get("fecha");
-        const tipo = new URL(req.url, "https://sipropan.local").searchParams.get("tipo") || "todo";
-        const reporte = await reportar({ auth: { uid: identidad.uid }, fecha, tipo });
+        const tipo =
+          new URL(req.url, "https://sipropan.local").searchParams.get("tipo") ||
+          "todo";
+        const reporte = await reportar({
+          auth: { uid: identidad.uid },
+          fecha,
+          tipo,
+        });
         res.writeHead(200, {
           "Content-Type": "text/csv; charset=utf-8",
           "Content-Disposition":

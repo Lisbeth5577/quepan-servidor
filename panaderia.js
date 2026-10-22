@@ -1,29 +1,38 @@
 "use strict";
-// Frontend de la plantilla adaptado a las mismas operaciones REST del Android.
+// Una interfaz compartida por navegador y APK; el servidor valida cada operación.
 const $ = (id) => document.getElementById(id);
-const API_KEY = "AIzaSyAyK87A9hF5j3s6pY_Zcp2s3zO-Itk-GAc"; // Identificador publico Firebase, no credencial administrativa.
+const API_KEY = "AIzaSyAyK87A9hF5j3s6pY_Zcp2s3zO-Itk-GAc";
 let sesion = null,
   perfil = null,
   modulo = "productos",
-  ocupado = false;
-let datos = [],
+  datos = [],
   catalogos = {},
+  ocupado = false,
+  pendiente = null,
   accion = "",
-  pedidoActual = "",
-  pendiente = null;
+  registroId = "",
+  coleccionActual = "",
+  editing = null,
+  lineasTipo = "productos",
+  stream = null,
+  refreshTimer;
 const nombres = {
   productos: "Productos",
+  pedidos: "Pedidos y entregas",
+  inventario_sucursales: "Inventario por sucursal",
+  salidas_sucursales: "Ventas y salidas",
+  producciones: "Producción",
   ingredientes: "Ingredientes",
   recetas: "Recetas",
-  pedidos: "Pedidos y entregas",
-  producciones: "Producción",
   movimientos: "Entradas",
   sucursales: "Sucursales",
+  usuarios: "Vendedores",
   incidencias: "Incidencias de ruta",
-  alertas: "Alertas de existencia",
-  notificaciones: "Avisos",
   reportes: "Reportes diarios",
+  alertas: "Alertas de producción",
+  notificaciones: "Notificaciones",
 };
+const gerente = () => perfil?.rol === "GERENTE";
 const hoy = () =>
   new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Guatemala",
@@ -31,30 +40,33 @@ const hoy = () =>
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
-const gerente = () => perfil?.rol === "GERENTE";
-function mensaje(texto, error = false) {
-  $("mensaje").textContent = texto;
+function mensaje(s, error = false) {
+  $("mensaje").textContent = s;
   $("mensaje").className = error ? "error" : "exito";
 }
-function nodo(tag, texto, contenedor) {
+function nodo(tag, texto, parent) {
   const e = document.createElement(tag);
   if (texto !== undefined) e.textContent = texto;
-  if (contenedor) contenedor.append(e);
+  if (parent) parent.append(e);
   return e;
 }
-function boton(texto, fn, contenedor) {
-  const e = nodo("button", texto, contenedor);
-  e.type = "button";
-  e.addEventListener("click", fn);
-  return e;
+function boton(s, fn, p, clase = "") {
+  const b = nodo("button", s, p);
+  b.type = "button";
+  b.className = clase;
+  b.onclick = fn;
+  return b;
 }
 function nombre(c, id) {
   return (catalogos[c] || []).find((x) => x.id === id)?.nombre || id || "";
 }
-function hora(fecha) {
-  return fecha
-    ? new Date(fecha).toLocaleString("es-GT", { timeZone: "America/Guatemala" })
+function hora(v) {
+  return v
+    ? new Date(v).toLocaleString("es-GT", { timeZone: "America/Guatemala" })
     : "";
+}
+function numero(p) {
+  return p.numero || p.id;
 }
 async function token() {
   if (!sesion) throw Error("Inicia sesión");
@@ -71,8 +83,7 @@ async function token() {
       },
     );
     const x = await r.json();
-    if (!r.ok)
-      throw Error("La sesión venció. Cierra sesión e ingresa otra vez.");
+    if (!r.ok) throw Error("Sesión vencida. Ingresa nuevamente.");
     sesion = {
       id: x.id_token,
       refresh: x.refresh_token,
@@ -81,13 +92,10 @@ async function token() {
   }
   return sesion.id;
 }
-async function api(ruta, opciones = {}) {
-  const r = await fetch(ruta, {
-    ...opciones,
-    headers: {
-      ...opciones.headers,
-      Authorization: "Bearer " + (await token()),
-    },
+async function api(url, opts = {}) {
+  const r = await fetch(url, {
+    ...opts,
+    headers: { ...opts.headers, Authorization: "Bearer " + (await token()) },
     signal: AbortSignal.timeout(90000),
   });
   const x = await r.json();
@@ -98,12 +106,12 @@ async function api(ruta, opciones = {}) {
   }
   return x;
 }
-$("login").addEventListener("submit", async (e) => {
+$("login").onsubmit = async (e) => {
   e.preventDefault();
   if (ocupado) return;
   ocupado = true;
   mensaje("Iniciando sesión…");
-  const clave = $("clave").value;
+  const pass = $("clave").value;
   $("clave").value = "";
   try {
     const r = await fetch(
@@ -114,151 +122,274 @@ $("login").addEventListener("submit", async (e) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: $("correo").value.trim(),
-          password: clave,
+          password: pass,
           returnSecureToken: true,
         }),
+        signal: AbortSignal.timeout(90000),
       },
     );
     const x = await r.json();
-    if (!r.ok)
-      throw Error(
-        "No se pudo iniciar sesión. Revisa el correo y la contraseña de tu cuenta asignada.",
-      );
-    // Sesion solo en memoria; la contraseña no se guarda ni se envia a nuestro servidor.
+    if (!r.ok) throw Error("Revisa el correo y la contraseña de tu cuenta.");
     sesion = {
       id: x.idToken,
       refresh: x.refreshToken,
       vence: Date.now() + Number(x.expiresIn) * 1000 - 60000,
     };
     perfil = await api("/api/perfil");
-    $("usuario").textContent = perfil.nombre + " · " + perfil.rol;
     try {
-      const guardado = JSON.parse(
-        sessionStorage.getItem("sipropanPendiente") || "null",
-      );
-      pendiente = guardado?.uid === perfil.uid ? guardado.datos : null;
+      const x = JSON.parse(sessionStorage.getItem("quepanPendiente") || "null");
+      pendiente = x?.uid === perfil.uid ? x.datos : null;
     } catch {
       pendiente = null;
     }
-    $("reintentar").hidden = !pendiente;
+    $("usuario").textContent =
+      perfil.nombre +
+      " · " +
+      (gerente() ? "Gerente" : nombre("sucursales", perfil.sucursalId));
     $("acceso").hidden = true;
     $("aplicacion").hidden = false;
+    $("reintentar").hidden = !pendiente;
     $("modulos").replaceChildren();
-    for (const [id, texto] of Object.entries(nombres))
+    for (const [m, s] of Object.entries(nombres))
       if (
         gerente() ||
-        ["productos", "pedidos", "sucursales", "incidencias"].includes(id)
+        [
+          "productos",
+          "pedidos",
+          "inventario_sucursales",
+          "salidas_sucursales",
+          "sucursales",
+          "incidencias",
+          "reportes",
+        ].includes(m)
       )
-        boton(texto, () => abrir(id), $("modulos"));
+        boton(s, () => abrir(m), $("modulos"));
+    $("avisos").hidden = !window.QuePanAndroid;
     await cargarCatalogos();
     await abrir("productos");
+    conectar();
   } catch (err) {
     sesion = null;
     perfil = null;
-    $("acceso").hidden = false;
-    $("aplicacion").hidden = true;
     mensaje(err.message, true);
   } finally {
     ocupado = false;
   }
-});
-$("salir").addEventListener("click", () => {
+};
+$("salir").onclick = () => {
+  stream?.abort();
+  stream = null;
   sesion = null;
   perfil = null;
-  catalogos = {};
   datos = [];
+  catalogos = {};
   pendiente = null;
-  $("filas").replaceChildren();
   $("aplicacion").hidden = true;
   $("acceso").hidden = false;
+  $("filas").replaceChildren();
+  if (window.QuePanAndroid) window.QuePanAndroid.cerrarSesion();
   mensaje("Sesión cerrada.");
-});
+};
 async function cargarCatalogos() {
-  const listas = [
+  const cs = [
     "productos",
     "sucursales",
+    "inventario_sucursales",
     ...(gerente() ? ["ingredientes", "usuarios", "recetas"] : []),
   ];
   await Promise.all(
-    listas.map(async (c) => {
+    cs.map(async (c) => {
       catalogos[c] = (await api("/api/datos?modulo=" + c)).filas;
     }),
   );
 }
-async function abrir(id) {
-  modulo = id;
+let refrescando = false;
+async function refrescarSilencioso() {
+  if (!perfil || refrescando || ocupado) return;
+  refrescando = true;
+  try {
+    await cargarCatalogos();
+    if (modulo !== "reportes") {
+      datos = (await api("/api/datos?modulo=" + modulo)).filas;
+      pintar();
+    }
+    actualizarLimites();
+    $("conexion").textContent =
+      "● Disponibilidad actualizada · " +
+      new Date().toLocaleTimeString("es-GT");
+  } catch {
+    $("conexion").textContent =
+      "Sin actualización. Revisa internet; al guardar se valida el stock.";
+  } finally {
+    refrescando = false;
+  }
+}
+async function conectar() {
+  stream?.abort();
+  const controller = new AbortController();
+  stream = controller;
+  try {
+    const r = await fetch("/api/eventos", {
+      headers: { Authorization: "Bearer " + (await token()) },
+      signal: controller.signal,
+    });
+    if (!r.ok) throw Error("Conexión interrumpida");
+    $("conexion").textContent = "● Conectado en tiempo real";
+    const reader = r.body.getReader(),
+      decoder = new TextDecoder();
+    let buffer = "";
+    while (perfil) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let i;
+      while ((i = buffer.indexOf("\n\n")) >= 0) {
+        const event = buffer.slice(0, i);
+        buffer = buffer.slice(i + 2);
+        if (event.includes("event: actualizar")) {
+          clearTimeout(refreshTimer);
+          refreshTimer = setTimeout(refrescarSilencioso, 300);
+        }
+      }
+    }
+  } catch (e) {
+    if (e.name === "AbortError") return;
+    $("conexion").textContent = "Reconectando disponibilidad…";
+  }
+  if (perfil && stream === controller) setTimeout(conectar, 3000);
+}
+const ayudas = {
+  productos:
+    "Disponible = existencia en producción menos unidades reservadas por pedidos. El stock se valida nuevamente al guardar.",
+  pedidos:
+    "Los pedidos pendientes se pueden modificar o cancelar. Los cancelados se ocultan aquí y se conservan en el reporte. El origen puede ser producción u otra sucursal.",
+  inventario_sucursales:
+    "Consulta qué sucursal tiene producto. En tu sucursal registra ventas o un conteo físico. Con una unidad o menos aparece «Pedir más producto». Las existencias anteriores requieren un conteo inicial.",
+  recetas:
+    "Registra el rendimiento y las cantidades de ingredientes. Eliminar desactiva la receta y conserva el historial.",
+  sucursales:
+    "Direcciones editables y prefijos únicos para numerar pedidos. Las cuentas de nuevos vendedores deben crearse y asignarse antes de pedir.",
+  salidas_sucursales:
+    "Cada venta o conteo conserva quién lo registró, el motivo y la existencia resultante.",
+};
+async function abrir(m) {
+  modulo = m;
   datos = [];
-  $("columnas").replaceChildren();
-  $("filas").replaceChildren();
-  $("resumen").textContent = "";
-  $("titulo").textContent = nombres[id];
+  for (const id of ["f-sucursal", "f-producto", "f-ruta", "f-estado"])
+    $(id).value = "";
+  editing = null;
+  $("titulo").textContent = nombres[m];
+  $("ayuda").textContent = ayudas[m] || "";
   $("captura").hidden = true;
+  $("reporte").hidden = m !== "reportes";
+  $("tabla").hidden = m === "reportes";
   $("buscar").value = "";
-  $("reporte").hidden = id !== "reportes";
-  $("tabla").hidden = id === "reportes";
-  $("nuevo").hidden = !(
-    id === "pedidos" ||
-    (gerente() && ["producciones", "movimientos"].includes(id))
-  );
-  $("nuevo").textContent =
-    id === "pedidos"
-      ? "Nuevo pedido"
-      : id === "producciones"
-        ? "Registrar producción"
-        : "Entrada de ingrediente";
+  $("indicadores").replaceChildren();
   for (const b of $("modulos").children)
-    b.classList.toggle("activo", b.textContent === nombres[id]);
-  if (id === "reportes") {
+    b.classList.toggle("activo", b.textContent === nombres[m]);
+  const alta = {
+    pedidos: "Nuevo pedido",
+    producciones: "Registrar producción",
+    movimientos: "Registrar entrada",
+    productos: "Agregar producto",
+    ingredientes: "Agregar ingrediente",
+    recetas: "Agregar receta",
+    sucursales: "Agregar sucursal",
+  };
+  $("nuevo").hidden = !(alta[m] && (m === "pedidos" || gerente()));
+  $("nuevo").textContent = alta[m] || "";
+  if (m === "reportes") {
     $("fecha-reporte").value = hoy();
-    mensaje("Elige la fecha y el tipo de listado.");
+    mensaje(
+      "Elige la fecha y un listado. Cada vendedor descarga únicamente su sucursal.",
+    );
     return;
   }
   try {
     mensaje("Consultando…");
-    const resultado = await api("/api/datos?modulo=" + id);
-    if (modulo !== id) return; // Una respuesta anterior no sustituye el modulo actual.
-    datos = resultado.filas;
+    const x = await api("/api/datos?modulo=" + m);
+    if (modulo !== m) return;
+    datos = x.filas;
+    prepararFiltros();
     pintar();
     mensaje("Información actualizada.");
   } catch (e) {
-    if (modulo !== id) return;
-    datos = [];
-    pintar();
     mensaje(e.message, true);
   }
 }
-const columnas = {
+const cols = {
   productos: [
+    ["Código", (x) => x.codigo],
     ["Producto", (x) => x.nombre],
     ["Existencia", (x) => x.existencia],
-    ["Mínimo", (x) => x.minimo],
+    ["Reservado", (x) => x.reservado || 0],
+    ["Disponible", (x) => x.disponible],
     ["Unidad", (x) => x.unidad],
+    ["Mínimo", (x) => x.minimo],
   ],
   ingredientes: [
+    ["Código", (x) => x.codigo],
     ["Ingrediente", (x) => x.nombre],
     ["Existencia", (x) => x.existencia],
-    ["Mínimo", (x) => x.minimo],
     ["Unidad", (x) => x.unidad],
+    ["Mínimo", (x) => x.minimo],
   ],
   sucursales: [
     ["Sucursal", (x) => x.nombre],
-    ["Activa", (x) => (x.activo ? "Sí" : "No")],
+    ["Prefijo de pedidos", (x) => x.prefijo],
+    ["Dirección", (x) => x.direccion || "Pendiente de registrar"],
+  ],
+  usuarios: [
+    ["Vendedor", (x) => x.nombre],
+    ["Rol", (x) => x.rol],
+    ["Sucursal", (x) => nombre("sucursales", x.sucursalId)],
+    ["Activo", (x) => (x.activo ? "Sí" : "No")],
   ],
   pedidos: [
-    ["Pedido", (x) => x.id],
-    ["Sucursal", (x) => nombre("sucursales", x.sucursalId)],
-    ["Programado", (x) => x.fechaEntrega],
+    ["Pedido", numero],
+    ["Sucursal", (x) => x.sucursalNombre || nombre("sucursales", x.sucursalId)],
+    ["Origen", (x) => x.origenNombre || "Producción central"],
+    ["Recibir el", (x) => x.fechaEntrega],
     ["Estado", (x) => x.estado],
     [
       "Productos",
       (x) =>
         (x.detalles || [])
-          .map((l) => nombre("productos", l.productoId) + ": " + l.cantidad)
+          .map(
+            (l) =>
+              (l.codigo || nombre("productos", l.productoId)) +
+              " · " +
+              (l.nombre || nombre("productos", l.productoId)) +
+              ": " +
+              l.cantidad,
+          )
           .join("\n"),
     ],
-    ["Unidad / ruta", (x) => [x.unidad, x.ruta].filter(Boolean).join(" / ")],
+    ["Ruta / unidad", (x) => [x.ruta, x.unidad].filter(Boolean).join(" / ")],
+    ["Comentarios", (x) => x.comentarios || ""],
     ["Registrado", (x) => hora(x.creado)],
-    ["Entregado", (x) => hora(x.entregado)],
+  ],
+  inventario_sucursales: [
+    ["Sucursal", (x) => x.sucursalNombre],
+    ["Código", (x) => x.codigo],
+    ["Producto", (x) => x.productoNombre],
+    ["Existencia", (x) => x.existencia],
+    ["Reservado", (x) => x.reservado || 0],
+    ["Disponible", (x) => x.disponible],
+    ["Alerta", (x) => (x.sinConteo ? "Realizar conteo inicial" : x.alerta)],
+  ],
+  salidas_sucursales: [
+    ["Fecha", (x) => hora(x.creado)],
+    ["Sucursal", (x) => nombre("sucursales", x.sucursalId)],
+    ["Producto", (x) => nombre("productos", x.productoId)],
+    [
+      "Tipo",
+      (x) =>
+        x.tipo === "ventaSucursal" ? "Venta / salida" : "Conteo de existencia",
+    ],
+    ["Cantidad", (x) => x.cantidad],
+    ["Existencia final", (x) => x.existencia],
+    ["Motivo", (x) => x.motivo],
   ],
   recetas: [
     ["Producto", (x) => nombre("productos", x.id)],
@@ -269,33 +400,16 @@ const columnas = {
       (x) =>
         (x.ingredientes || [])
           .map(
-            (l) =>
-              nombre("ingredientes", l.ingredienteId) +
-              ": " +
-              l.cantidad +
-              " " +
-              ((catalogos.ingredientes || []).find(
-                (i) => i.id === l.ingredienteId,
-              )?.unidad || ""),
+            (l) => nombre("ingredientes", l.ingredienteId) + ": " + l.cantidad,
           )
           .join("\n"),
     ],
-    ["Tipo", (x) => (x.academica ? "Académica de demostración" : "Registrada")],
   ],
   producciones: [
     ["Fecha", (x) => hora(x.creado)],
     ["Producto", (x) => nombre("productos", x.productoId)],
     ["Cantidad", (x) => x.cantidad],
     ["Estado", (x) => x.estado],
-    [
-      "Consumos",
-      (x) =>
-        (x.consumos || [])
-          .map(
-            (l) => nombre("ingredientes", l.ingredienteId) + ": " + l.cantidad,
-          )
-          .join("\n"),
-    ],
   ],
   movimientos: [
     ["Fecha", (x) => hora(x.creado)],
@@ -304,83 +418,248 @@ const columnas = {
     ["Tipo", (x) => x.tipo],
   ],
   incidencias: [
-    ["Pedido", (x) => x.pedidoId],
+    ["Pedido", (x) => x.numero || x.pedidoId],
     ["Problema", (x) => x.detalle],
     ["Estado", (x) => x.estado],
     ["Reportado", (x) => hora(x.creado)],
     ["Atendido", (x) => hora(x.resuelto)],
-    ["Nueva unidad", (x) => x.nuevaUnidad],
   ],
   alertas: [
     ["Producto", (x) => x.nombre],
     ["Existencia", (x) => x.existencia],
     ["Mínimo", (x) => x.minimo],
-    ["Alerta activa", (x) => (x.activa ? "Sí" : "No")],
-    ["Actualizado", (x) => hora(x.actualizado)],
+    ["Alerta", (x) => (x.activa ? "Pedir más producto" : "Suficiente")],
   ],
   notificaciones: [
     ["Aviso", (x) => x.titulo],
     ["Mensaje", (x) => x.mensaje],
-    ["Estado de envío", (x) => x.estado],
-    ["Enviados", (x) => x.enviados || 0],
-    ["Fallos", (x) => x.fallos || 0],
+    ["Estado", (x) => x.estado],
     ["Fecha", (x) => hora(x.creado)],
   ],
 };
-function pintar() {
-  const cols = columnas[modulo];
-  if (!cols) return;
-  const filtro = $("buscar").value.toLocaleLowerCase();
-  const lista = datos.filter((x) =>
-    cols
-      .map((c) => c[1](x))
-      .join(" ")
-      .toLocaleLowerCase()
-      .includes(filtro),
+function opciones(id, rows, primero) {
+  const e = $(id),
+    prev = e.value;
+  e.replaceChildren();
+  const o = nodo("option", primero, e);
+  o.value = "";
+  for (const x of rows) {
+    const o = nodo("option", x.nombre, e);
+    o.value = x.id;
+  }
+  e.value = [...e.options].some((o) => o.value === prev) ? prev : "";
+}
+function prepararFiltros() {
+  const aplican = {
+    "f-sucursal": [
+      "pedidos",
+      "inventario_sucursales",
+      "salidas_sucursales",
+      "sucursales",
+      "usuarios",
+    ],
+    "f-producto": [
+      "productos",
+      "pedidos",
+      "inventario_sucursales",
+      "salidas_sucursales",
+      "recetas",
+      "producciones",
+    ],
+    "f-ruta": ["pedidos"],
+    "f-estado": ["pedidos", "incidencias", "producciones", "notificaciones"],
+  };
+  for (const [id, ms] of Object.entries(aplican)) {
+    $(id).parentElement.hidden = !ms.includes(modulo);
+    if (!ms.includes(modulo)) $(id).value = "";
+  }
+  opciones(
+    "f-sucursal",
+    (catalogos.sucursales || []).map((s) => ({ id: s.id, nombre: s.nombre })),
+    "Todas",
   );
-  lista.sort(
+  opciones(
+    "f-producto",
+    (catalogos.productos || []).map((p) => ({ id: p.id, nombre: p.nombre })),
+    "Todos",
+  );
+  opciones(
+    "f-ruta",
+    [...new Set(datos.map((x) => x.ruta).filter(Boolean))].map((x) => ({
+      id: x,
+      nombre: x,
+    })),
+    "Todas",
+  );
+  opciones(
+    "f-estado",
+    [...new Set(datos.map((x) => x.estado).filter(Boolean))].map((x) => ({
+      id: x,
+      nombre: x,
+    })),
+    "Todos",
+  );
+  if (modulo === "inventario_sucursales" && !gerente())
+    $("f-sucursal").value = perfil.sucursalId;
+}
+function pintar() {
+  const cs = cols[modulo];
+  if (!cs) return;
+  const q = $("buscar").value.toLocaleLowerCase(),
+    s = $("f-sucursal").value,
+    p = $("f-producto").value,
+    r = $("f-ruta").value,
+    e = $("f-estado").value;
+  const list = datos.filter(
+    (x) =>
+      (!s || x.sucursalId === s || (modulo === "sucursales" && x.id === s)) &&
+      (!p ||
+        x.productoId === p ||
+        (modulo === "productos" && x.id === p) ||
+        (modulo === "recetas" && x.id === p) ||
+        x.detalles?.some((l) => l.productoId === p)) &&
+      (!r || x.ruta === r) &&
+      (!e || x.estado === e) &&
+      cs
+        .map((c) => c[1](x))
+        .join(" ")
+        .toLocaleLowerCase()
+        .includes(q),
+  );
+  list.sort(
     (a, b) =>
-      String(b.creado || b.actualizado || "").localeCompare(
-        String(a.creado || a.actualizado || ""),
-      ) || String(a.nombre || a.id).localeCompare(String(b.nombre || b.id)),
+      String(b.creado || "").localeCompare(String(a.creado || "")) ||
+      String(a.numero || a.codigo || a.nombre || a.id).localeCompare(
+        String(b.numero || b.codigo || b.nombre || b.id),
+        "es",
+        { numeric: true },
+      ),
   );
   $("columnas").replaceChildren();
   $("filas").replaceChildren();
-  const head = nodo("tr", undefined, $("columnas"));
-  cols.forEach((c) => nodo("th", c[0], head));
-  if (modulo === "pedidos") nodo("th", "Acciones", head);
-  for (const x of lista) {
+  const tr = nodo("tr", undefined, $("columnas"));
+  cs.forEach((c) => nodo("th", c[0], tr));
+  nodo("th", "Acciones", tr);
+  for (const x of list) {
     const tr = nodo("tr", undefined, $("filas"));
-    cols.forEach((c) => {
-      const td = nodo("td", c[1](x) ?? "", tr);
-      td.className = "detalle-texto";
-    });
-    if (modulo === "pedidos") {
+    cs.forEach(([name, fn]) => {
       const td = nodo("td", undefined, tr);
-      if (gerente() && x.estado === "PENDIENTE")
-        boton("Despachar", () => formulario("despachar", x.id), td);
-      if (gerente() && x.estado === "INCIDENCIA")
-        boton("Asignar otra unidad", () => formulario("reasignar", x.id), td);
-      if (x.estado === "EN_RUTA") {
-        boton("Confirmar entrega", () => formulario("entregar", x.id), td);
-        boton("Reportar problema", () => formulario("incidencia", x.id), td);
-      }
-    }
+      if (["Estado", "Alerta"].includes(name)) {
+        const badge = nodo("span", fn(x), td);
+        badge.className =
+          "pill" + (/Pedir|conteo|INCIDENCIA/.test(fn(x)) ? " low" : "");
+      } else td.textContent = fn(x) ?? "";
+    });
+    const td = nodo("td", undefined, tr);
+    acciones(x, td);
+  }
+  if (!list.length) {
+    const tr = nodo("tr", undefined, $("filas")),
+      td = nodo("td", "No hay registros para estos filtros.", tr);
+    td.colSpan = cs.length + 1;
+    td.className = "empty";
   }
   $("resumen").textContent =
-    lista.length +
-    " registros. " +
-    (lista.length ? "" : "No hay registros para este listado.");
+    list.length +
+    " registros visibles · Los cambios se reciben mientras haya conexión.";
+  metricas(list);
 }
-function campo(id, titulo, tipo = "text", opciones) {
+function metricas(list) {
+  $("indicadores").replaceChildren();
+  let ms = [];
+  if (modulo === "productos")
+    ms = [
+      ["Productos", list.length],
+      [
+        "Unidades disponibles",
+        list.reduce((n, p) => n + (p.disponible || 0), 0),
+      ],
+      ["Sin disponibilidad", list.filter((x) => x.disponible <= 0).length],
+    ];
+  if (modulo === "pedidos")
+    ms = [
+      ["Pendientes", list.filter((x) => x.estado === "PENDIENTE").length],
+      ["En ruta", list.filter((x) => x.estado === "EN_RUTA").length],
+      ["Entregados", list.filter((x) => x.estado === "ENTREGADO").length],
+    ];
+  if (modulo === "inventario_sucursales")
+    ms = [
+      [
+        "Productos con una unidad o menos",
+        list.filter((x) => x.existencia <= 1 && !x.sinConteo).length,
+      ],
+      ["Conteos iniciales pendientes", list.filter((x) => x.sinConteo).length],
+    ];
+  for (const [name, n] of ms) {
+    const e = nodo("div", undefined, $("indicadores"));
+    e.className = "metric";
+    nodo("strong", String(n), e);
+    nodo("span", name, e);
+  }
+}
+function acciones(x, td) {
+  if (modulo === "pedidos") {
+    const propio = gerente() || x.sucursalId === perfil.sucursalId,
+      origen = gerente() || x.origenId === perfil.sucursalId;
+    if (x.estado === "PENDIENTE") {
+      if (propio) {
+        boton(
+          "Modificar",
+          () => formulario("modificarPedido", x),
+          td,
+          "secondary",
+        );
+        boton("Cancelar pedido", () => cancelarPedido(x), td, "danger");
+      }
+      if (origen) boton("Despachar", () => formulario("despachar", x), td);
+    }
+    if (x.estado === "INCIDENCIA" && gerente())
+      boton("Asignar otra unidad", () => formulario("reasignar", x), td);
+    if (x.estado === "EN_RUTA" && (gerente() || x.vendedorUid === perfil.uid)) {
+      boton("Confirmar entrega", () => confirmarEntrega(x), td);
+      boton(
+        "Reportar problema",
+        () => formulario("incidencia", x),
+        td,
+        "secondary",
+      );
+    }
+  }
+  if (
+    modulo === "inventario_sucursales" &&
+    (gerente() || x.sucursalId === perfil.sucursalId)
+  ) {
+    boton("Venta / salida", () => formulario("ventaSucursal", x), td);
+    boton("Conteo", () => formulario("ajustarSucursal", x), td, "secondary");
+  }
+  if (
+    gerente() &&
+    ["productos", "ingredientes", "recetas", "sucursales"].includes(modulo)
+  ) {
+    boton("Modificar", () => formulario("guardarCatalogo", x), td, "secondary");
+    boton("Eliminar", () => eliminarCatalogo(x), td, "danger");
+  }
+  if (gerente() && modulo === "usuarios" && x.rol === "VENDEDOR")
+    boton(
+      "Asignar sucursal",
+      () => formulario("guardarCatalogo", x),
+      td,
+      "secondary",
+    );
+  if (modulo === "productos" && gerente())
+    boton("Producir", () => formulario("producir", x), td);
+  if (modulo === "ingredientes" && gerente())
+    boton("Registrar entrada", () => formulario("entrada", x), td);
+}
+function campo(id, titulo, tipo = "text", options, value) {
   const lab = nodo("label", titulo, $("campos"));
   let e;
-  if (opciones) {
+  if (options) {
     e = nodo("select", undefined, lab);
-    opciones.forEach((x) => {
+    for (const x of options) {
       const o = nodo("option", x.nombre, e);
       o.value = x.id;
-    });
+    }
   } else {
     e = nodo(tipo === "textarea" ? "textarea" : "input", undefined, lab);
     if (tipo !== "textarea") e.type = tipo;
@@ -390,124 +669,339 @@ function campo(id, titulo, tipo = "text", opciones) {
   if (tipo === "number") {
     e.min = "0.01";
     e.max = "1000000";
-    e.step = "0.01";
+    e.step = ".01";
   }
   if (tipo === "text" || tipo === "textarea")
-    e.maxLength = tipo === "textarea" ? 500 : 60;
+    e.maxLength = tipo === "textarea" ? 500 : 120;
+  if (value !== undefined) e.value = value;
   return e;
 }
-function detalle() {
+function origen() {
+  return $("origen")?.value || editing?.origenId || "PRODUCCION";
+}
+function disponible(pid) {
+  const p = (catalogos.productos || []).find((p) => p.id === pid),
+    o = origen();
+  let n =
+    o === "PRODUCCION"
+      ? p?.disponible
+      : (catalogos.inventario_sucursales || []).find(
+          (x) => x.sucursalId === o && x.productoId === pid,
+        )?.disponible;
+  const credito =
+    accion === "modificarPedido"
+      ? editing?.detalles?.find((l) => l.productoId === pid)?.cantidad || 0
+      : 0;
+  return Math.max(0, (n || 0) + credito);
+}
+function detalle(l = {}) {
   const row = nodo("div", undefined, $("detalles"));
-  row.className = "detalle";
+  row.className = "detail";
   const sel = nodo("select", undefined, row);
   sel.required = true;
-  sel.setAttribute("aria-label", "Producto");
-  (catalogos.productos || [])
-    .filter((x) => x.activo && !x.nombre.startsWith("PRUEBA ACADEMICA"))
-    .forEach((p) => {
-      const o = nodo("option", p.nombre, sel);
-      o.value = p.id;
-    });
+  sel.setAttribute(
+    "aria-label",
+    lineasTipo === "ingredientes" ? "Ingrediente" : "Producto",
+  );
+  const rows = catalogos[lineasTipo] || [];
+  for (const p of rows) {
+    const o = nodo("option", (p.codigo || p.id) + " · " + p.nombre, sel);
+    o.value = p.id;
+  }
   const q = nodo("input", undefined, row);
   q.type = "number";
-  q.required = true;
-  q.min = "0.01";
-  q.step = "0.01";
+  q.min = ".01";
+  q.step = ".01";
   q.max = "1000000";
-  q.value = "1";
+  q.required = true;
+  q.value = l.cantidad ?? 1;
   q.setAttribute("aria-label", "Cantidad");
-  boton("Quitar", () => row.remove(), row);
+  if (l.productoId || l.ingredienteId)
+    sel.value = l.productoId || l.ingredienteId;
+  boton("Quitar", () => row.remove(), row, "secondary");
+  nodo("small", "", row);
+  sel.onchange = actualizarLimites;
+  actualizarLimites();
 }
-function formulario(a, id = "") {
-  if (ocupado || pendiente) {
-    mensaje(
-      "Completa o reintenta la solicitud pendiente antes de iniciar otra.",
-      true,
+function actualizarLimites() {
+  if (
+    !["crearPedido", "modificarPedido"].includes(accion) ||
+    $("captura").hidden
+  )
+    return;
+  for (const row of $("detalles").children) {
+    const sel = row.querySelector("select"),
+      q = row.querySelector("input");
+    for (const o of sel.options) {
+      const p = (catalogos.productos || []).find((p) => p.id === o.value),
+        n = disponible(o.value);
+      o.textContent =
+        (p?.codigo || o.value) + " · " + p?.nombre + " · " + n + " disponibles";
+      o.disabled = n <= 0 && o.value !== sel.value;
+    }
+    const n = disponible(sel.value);
+    q.max = String(n);
+    q.setCustomValidity(
+      Number(q.value) > n
+        ? "Falta de stock: solo hay " + n + " unidades disponibles."
+        : "",
     );
+    row.querySelector("small").textContent =
+      n > 0
+        ? "Disponible para reservar: " + n + " unidades."
+        : "Sin unidades disponibles. No se puede agregar este artículo.";
+    q.oninput = () =>
+      q.setCustomValidity(
+        Number(q.value) > disponible(sel.value)
+          ? "La cantidad supera el stock disponible."
+          : "",
+      );
+  }
+}
+function formulario(a, x = null) {
+  if (ocupado || pendiente) {
+    mensaje("Completa la solicitud pendiente antes de iniciar otra.", true);
     return;
   }
   accion = a;
-  pedidoActual = id;
-  $("captura").hidden = false;
+  editing = x;
+  registroId = x?.id || "";
+  coleccionActual = modulo;
+  lineasTipo = "productos";
   $("campos").replaceChildren();
   $("detalles").replaceChildren();
-  $("agregar").hidden = a !== "crearPedido";
-  const titulos = {
+  $("captura").hidden = false;
+  $("agregar").hidden = true;
+  const titles = {
     crearPedido: "Nuevo pedido",
-    producir: "Registrar producción",
-    entrada: "Entrada de ingrediente",
+    modificarPedido: "Modificar pedido",
     despachar: "Despachar pedido",
     reasignar: "Asignar otra unidad",
-    entregar: "Confirmar entrega",
-    incidencia: "Reportar problema en ruta",
+    incidencia: "Reportar problema",
+    producir: "Registrar producción",
+    entrada: "Registrar entrada",
+    guardarCatalogo: (x ? "Modificar " : "Agregar ") + (nombres[modulo] || ""),
+    ventaSucursal: "Registrar venta / salida",
+    ajustarSucursal: "Registrar conteo físico",
   };
-  $("titulo-formulario").textContent = titulos[a] + (id ? " · " + id : "");
-  if (a === "crearPedido") {
-    campo(
-      "sucursal",
-      "Sucursal",
-      "text",
-      (catalogos.sucursales || []).filter((s) => s.activo),
+  $("titulo-formulario").textContent =
+    titles[a] + (x?.numero ? " · " + x.numero : "");
+  if (["crearPedido", "modificarPedido"].includes(a)) {
+    const bs = (catalogos.sucursales || []).filter(
+      (s) => gerente() || s.id === perfil.sucursalId,
     );
-    const f = campo("fecha", "Fecha de entrega", "date");
-    f.value = hoy();
-    f.min = hoy();
-    detalle();
-  }
-  if (a === "producir") {
-    const producto = campo(
-      "producto",
-      "Producto",
+    campo("sucursal", "Sucursal que recibirá", "text", bs, x?.sucursalId);
+    if (x) $("sucursal").disabled = true;
+    const source = campo(
+      "origen",
+      "Solicitar producto a",
       "text",
-      (catalogos.productos || []).filter(
-        (p) => p.activo && (catalogos.recetas || []).some((r) => r.id === p.id),
-      ),
+      [
+        { id: "PRODUCCION", nombre: "Producción central" },
+        ...(catalogos.sucursales || []).filter(
+          (s) => s.id !== $("sucursal").value,
+        ),
+      ],
+      x?.origenId || "PRODUCCION",
     );
-    const cantidad = campo("cantidad", "Unidades a producir", "number");
-    const sugerirLote = () => {
-      cantidad.value =
-        (catalogos.recetas || []).find((r) => r.id === producto.value)
-          ?.rendimiento || "";
+    source.disabled = !!x;
+    source.onchange = actualizarLimites;
+    $("sucursal").onchange = () => {
+      const val = source.value;
+      source.replaceChildren();
+      for (const s of [
+        { id: "PRODUCCION", nombre: "Producción central" },
+        ...(catalogos.sucursales || []).filter(
+          (s) => s.id !== $("sucursal").value,
+        ),
+      ]) {
+        const o = nodo("option", s.nombre, source);
+        o.value = s.id;
+      }
+      source.value = [...source.options].some((o) => o.value === val)
+        ? val
+        : "PRODUCCION";
+      actualizarLimites();
     };
-    producto.addEventListener("change", sugerirLote);
-    sugerirLote();
-    nodo(
-      "p",
-      "Se propone el lote de la receta para conservar la precisión de los ingredientes. Puedes ajustar la cantidad; el servidor valida el consumo y las existencias.",
-      $("campos"),
+    const f = campo(
+      "fecha",
+      "Fecha en que deseas recibirlo",
+      "date",
+      null,
+      x?.fechaEntrega || hoy(),
     );
+    f.min = hoy();
+    const c = campo(
+      "comentarios",
+      "Comentarios del pedido (opcional)",
+      "textarea",
+      null,
+      x?.comentarios || "",
+    );
+    c.required = false;
+    $("agregar").hidden = false;
+    (x?.detalles || [{}]).forEach(detalle);
   }
-  if (a === "entrada") {
-    campo(
-      "ingrediente",
-      "Ingrediente (respetar su unidad)",
-      "text",
-      (catalogos.ingredientes || [])
-        .filter((x) => x.activo)
-        .map((x) => ({ id: x.id, nombre: x.nombre + " · " + x.unidad })),
+  if (["producir", "entrada"].includes(a)) {
+    const c = a === "producir" ? "productos" : "ingredientes";
+    const ps = (catalogos[c] || []).filter(
+      (p) =>
+        a !== "producir" ||
+        (catalogos.recetas || []).some(
+          (r) => r.id === p.id && r.activo !== false,
+        ),
     );
-    campo("cantidad", "Cantidad recibida", "number");
+    const s = campo(
+      "articulo",
+      a === "producir" ? "Producto" : "Ingrediente",
+      "text",
+      ps,
+      x?.id,
+    );
+    const q = campo(
+      "cantidad",
+      a === "producir" ? "Unidades a producir" : "Cantidad recibida",
+      "number",
+    );
+    if (a === "producir") {
+      const lote = () =>
+        (q.value =
+          (catalogos.recetas || []).find((r) => r.id === s.value)
+            ?.rendimiento || 1);
+      s.onchange = lote;
+      lote();
+    }
   }
   if (["despachar", "reasignar"].includes(a)) {
-    campo(
-      "vendedor",
-      "Vendedor",
-      "text",
-      (catalogos.usuarios || []).filter(
-        (x) => x.activo && x.rol === "VENDEDOR",
-      ),
-    );
-    campo("unidad", "Unidad del vehículo");
+    if (gerente())
+      campo(
+        "vendedor",
+        "Vendedor de destino",
+        "text",
+        (catalogos.usuarios || []).filter(
+          (v) =>
+            v.activo && v.rol === "VENDEDOR" && v.sucursalId === x.sucursalId,
+        ),
+        x.vendedorUid,
+      );
+    campo("unidad", "Unidad del vehículo", "text", null, x.unidad || "");
     if (a === "despachar") campo("ruta", "Ruta");
   }
   if (a === "incidencia") campo("problema", "Describe el problema", "textarea");
-  if (a === "entregar")
-    nodo(
-      "p",
-      "Confirma únicamente si el pedido fue entregado a la sucursal.",
-      $("campos"),
+  if (["ventaSucursal", "ajustarSucursal"].includes(a)) {
+    nodo("p", x.sucursalNombre + " · " + x.productoNombre, $("campos"));
+    const q = campo(
+      "cantidad",
+      a === "ventaSucursal"
+        ? "Unidades vendidas o retiradas"
+        : "Existencia física contada",
+      "number",
+      null,
+      a === "ajustarSucursal" ? x.existencia : "",
     );
+    if (a === "ajustarSucursal") q.min = "0";
+    campo(
+      "motivo",
+      a === "ventaSucursal"
+        ? "Detalle de la venta / salida"
+        : "Motivo del conteo",
+      "textarea",
+      null,
+      a === "ajustarSucursal" ? "Conteo físico" : "",
+    );
+  }
+  if (a === "guardarCatalogo") {
+    if (modulo === "recetas") {
+      campo(
+        "articulo",
+        "Producto de la receta",
+        "text",
+        catalogos.productos,
+        x?.id,
+      );
+      if (x) $("articulo").disabled = true;
+      campo("nombre", "Nombre de la receta", "text", null, x?.nombre || "");
+      campo(
+        "rendimiento",
+        "Unidades que rinde",
+        "number",
+        null,
+        x?.rendimiento || 1,
+      );
+      lineasTipo = "ingredientes";
+      $("agregar").hidden = false;
+      (x?.ingredientes || [{}]).forEach(detalle);
+    } else {
+      campo("nombre", "Nombre", "text", null, x?.nombre || "");
+      if (modulo === "sucursales") {
+        const p = campo(
+          "prefijo",
+          "Prefijo único (ej. ST)",
+          "text",
+          null,
+          x?.prefijo || "",
+        );
+        p.maxLength = 5;
+        p.disabled = !!x;
+        campo(
+          "direccion",
+          "Dirección (opcional)",
+          "textarea",
+          null,
+          x?.direccion || "",
+        ).required = false;
+      } else if (modulo === "usuarios") {
+        campo(
+          "sucursal",
+          "Sucursal asignada",
+          "text",
+          catalogos.sucursales,
+          x?.sucursalId,
+        );
+        campo(
+          "activo",
+          "Acceso",
+          "text",
+          [
+            { id: "si", nombre: "Activo" },
+            { id: "no", nombre: "Inactivo" },
+          ],
+          x?.activo ? "si" : "no",
+        );
+      } else {
+        campo("unidad", "Unidad de medida", "text", null, x?.unidad || "UND");
+        const m = campo(
+          "minimo",
+          "Existencia mínima",
+          "number",
+          null,
+          x?.minimo ?? 1,
+        );
+        m.min = "0";
+        campo(
+          "descripcion",
+          "Descripción (opcional)",
+          "textarea",
+          null,
+          x?.descripcion || "",
+        ).required = false;
+        nodo(
+          "p",
+          "Las existencias se actualizan mediante producción o entradas; no se cambian al editar el catálogo.",
+          $("campos"),
+        );
+      }
+    }
+  }
   $("captura").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+async function enviar(a) {
+  pendiente = { solicitudId: crypto.randomUUID(), ...a };
+  sessionStorage.setItem(
+    "quepanPendiente",
+    JSON.stringify({ uid: perfil.uid, datos: pendiente }),
+  );
+  await guardar();
 }
 async function guardar() {
   if (ocupado || !pendiente) return;
@@ -521,7 +1015,7 @@ async function guardar() {
       body: JSON.stringify({ data: pendiente }),
     });
     pendiente = null;
-    sessionStorage.removeItem("sipropanPendiente");
+    sessionStorage.removeItem("quepanPendiente");
     $("captura").hidden = true;
     await cargarCatalogos();
     await abrir(modulo);
@@ -529,12 +1023,12 @@ async function guardar() {
   } catch (e) {
     if (e.http >= 400 && e.http < 500) {
       pendiente = null;
-      sessionStorage.removeItem("sipropanPendiente");
+      sessionStorage.removeItem("quepanPendiente");
     } else $("reintentar").hidden = false;
     mensaje(
       e.message +
         (pendiente
-          ? " Si no hubo confirmación, reintenta la MISMA solicitud para evitar duplicados."
+          ? " Reintenta la misma solicitud para evitar duplicados."
           : ""),
       true,
     );
@@ -542,98 +1036,167 @@ async function guardar() {
     ocupado = false;
   }
 }
-$("registro").addEventListener("submit", async (e) => {
+$("registro").onsubmit = async (e) => {
   e.preventDefault();
   if (ocupado || pendiente) return;
-  const a = { accion, solicitudId: crypto.randomUUID() };
-  if (pedidoActual) a.pedidoId = pedidoActual;
-  if (accion === "crearPedido") {
-    a.sucursalId = $("sucursal").value;
-    a.fechaEntrega = $("fecha").value;
-    a.detalles = [...$("detalles").children].map((r) => ({
-      productoId: r.querySelector("select").value,
-      cantidad: Number(r.querySelector("input").value),
-    }));
-    if (!a.detalles.length) {
-      mensaje("Agrega al menos un producto.", true);
-      return;
-    }
-  }
-  if (accion === "producir") {
-    a.productoId = $("producto").value;
-    a.cantidad = Number($("cantidad").value);
-  }
-  if (accion === "entrada") {
-    a.ingredienteId = $("ingrediente").value;
-    a.cantidad = Number($("cantidad").value);
-  }
-  if (["despachar", "reasignar"].includes(accion)) {
-    a.vendedorUid = $("vendedor").value;
-    a.unidad = $("unidad").value.trim();
-    if (accion === "despachar") a.ruta = $("ruta").value.trim();
-  }
-  if (accion === "incidencia") a.detalle = $("problema").value.trim();
-  pendiente = a;
-  sessionStorage.setItem(
-    "sipropanPendiente",
-    JSON.stringify({ uid: perfil.uid, datos: a }),
-  );
-  await guardar();
-});
-$("descargar").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  if (ocupado) return;
-  ocupado = true;
-  mensaje("Preparando listado…");
   try {
-    const tipo = $("tipo-reporte").value,
-      fecha = $("fecha-reporte").value;
-    const r = await fetch(
-      "/reportes/diario.csv?fecha=" +
-        encodeURIComponent(fecha) +
-        "&tipo=" +
-        tipo,
-      {
-        headers: { Authorization: "Bearer " + (await token()) },
-        signal: AbortSignal.timeout(90000),
-      },
-    );
-    if (!r.ok) {
-      const x = await r.json();
-      throw Error(x.error?.message || "No se pudo descargar");
+    const a = { accion };
+    const v = (id) => $(id).value.trim(),
+      n = (id) => Number(v(id));
+    if (["crearPedido", "modificarPedido"].includes(accion)) {
+      a.sucursalId = v("sucursal");
+      a.origenId = origen();
+      a.fechaEntrega = v("fecha");
+      a.comentarios = v("comentarios");
+      a.detalles = [...$("detalles").children].map((row) => ({
+        productoId: row.querySelector("select").value,
+        cantidad: Number(row.querySelector("input").value),
+      }));
+      if (!a.detalles.length) throw Error("Agrega al menos un producto.");
+      if (accion === "modificarPedido") a.pedidoId = registroId;
     }
-    const blob = await r.blob(),
-      url = URL.createObjectURL(blob);
-    const a = nodo("a");
-    a.href = url;
-    a.download = "SIPROPAN_" + tipo + "_" + fecha + ".csv";
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 30000);
-    mensaje("Descarga preparada. Revisa las descargas del navegador.");
+    if (["producir", "entrada"].includes(accion)) {
+      a[accion === "producir" ? "productoId" : "ingredienteId"] = v("articulo");
+      a.cantidad = n("cantidad");
+    }
+    if (["despachar", "reasignar", "incidencia"].includes(accion)) {
+      a.pedidoId = registroId;
+      if (accion === "incidencia") a.detalle = v("problema");
+      else {
+        a.vendedorUid = $("vendedor") ? v("vendedor") : editing.vendedorUid;
+        a.unidad = v("unidad");
+        if (accion === "despachar") a.ruta = v("ruta");
+      }
+    }
+    if (["ventaSucursal", "ajustarSucursal"].includes(accion)) {
+      a.sucursalId = editing.sucursalId;
+      a.productoId = editing.productoId;
+      a.motivo = v("motivo");
+      a[accion === "ventaSucursal" ? "cantidad" : "existencia"] = n("cantidad");
+    }
+    if (accion === "guardarCatalogo") {
+      a.coleccion = coleccionActual;
+      if (registroId) a.id = registroId;
+      a.datos = { nombre: v("nombre") };
+      if (coleccionActual === "recetas") {
+        a.id = v("articulo");
+        a.datos.rendimiento = n("rendimiento");
+        a.datos.ingredientes = [...$("detalles").children].map((row) => ({
+          ingredienteId: row.querySelector("select").value,
+          cantidad: Number(row.querySelector("input").value),
+        }));
+      } else if (coleccionActual === "sucursales") {
+        a.datos.prefijo = v("prefijo");
+        a.datos.direccion = v("direccion");
+      } else if (coleccionActual === "usuarios") {
+        a.datos.sucursalId = v("sucursal");
+        a.datos.activo = v("activo") === "si";
+      } else {
+        a.datos.unidad = v("unidad");
+        a.datos.minimo = n("minimo");
+        a.datos.descripcion = v("descripcion");
+      }
+    }
+    await enviar(a);
   } catch (e) {
     mensaje(e.message, true);
-  } finally {
-    ocupado = false;
   }
-});
-$("nuevo").addEventListener("click", () =>
+};
+async function cancelarPedido(p) {
+  if (
+    !confirm(
+      "¿Cancelar " +
+        numero(p) +
+        "? Se liberarán sus unidades reservadas y quedará en el reporte con status C.",
+    )
+  )
+    return;
+  const motivo = prompt("Motivo de cancelación", "Error en el pedido");
+  if (motivo === null) return;
+  await enviar({ accion: "cancelarPedido", pedidoId: p.id, motivo });
+}
+async function eliminarCatalogo(p) {
+  if (
+    confirm(
+      "¿Eliminar " +
+        (p.nombre || nombre("productos", p.id)) +
+        " de los listados? Su historial se conservará.",
+    )
+  )
+    await enviar({ accion: "desactivarCatalogo", coleccion: modulo, id: p.id });
+}
+async function confirmarEntrega(p) {
+  if (confirm("¿Confirmas que " + numero(p) + " fue recibido por la sucursal?"))
+    await enviar({ accion: "entregar", pedidoId: p.id });
+}
+$("nuevo").onclick = () =>
   formulario(
     modulo === "pedidos"
       ? "crearPedido"
       : modulo === "producciones"
         ? "producir"
-        : "entrada",
-  ),
-);
-$("agregar").addEventListener("click", detalle);
-$("cancelar").addEventListener("click", () => {
+        : modulo === "movimientos"
+          ? "entrada"
+          : "guardarCatalogo",
+  );
+$("agregar").onclick = () => detalle();
+$("cancelar").onclick = $("cerrar-form").onclick = () => {
   $("captura").hidden = true;
-});
-$("buscar").addEventListener("input", pintar);
-$("actualizar").addEventListener("click", async () => {
-  if (!ocupado) {
-    await cargarCatalogos();
-    await abrir(modulo);
+  accion = "";
+};
+$("actualizar").onclick = refrescarSilencioso;
+$("buscar").oninput = pintar;
+for (const id of ["f-sucursal", "f-producto", "f-ruta", "f-estado"])
+  $(id).onchange = pintar;
+$("reintentar").onclick = guardar;
+$("descargar").onsubmit = async (e) => {
+  e.preventDefault();
+  if (ocupado) return;
+  ocupado = true;
+  try {
+    const fecha = $("fecha-reporte").value,
+      tipo = $("tipo-reporte").value;
+    if (window.QuePanAndroid) {
+      window.QuePanAndroid.descargarReporte(fecha, tipo, await token());
+      mensaje("Elige dónde guardar el listado.");
+    } else {
+      mensaje("Preparando listado…");
+      const r = await fetch(
+        "/reportes/diario.csv?fecha=" +
+          encodeURIComponent(fecha) +
+          "&tipo=" +
+          tipo,
+        {
+          headers: { Authorization: "Bearer " + (await token()) },
+          signal: AbortSignal.timeout(90000),
+        },
+      );
+      if (!r.ok) {
+        const x = await r.json();
+        throw Error(x.error?.message || "No se pudo descargar");
+      }
+      const url = URL.createObjectURL(await r.blob()),
+        a = nodo("a");
+      a.href = url;
+      a.download = "QUEPAN_" + tipo + "_" + fecha + ".csv";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      mensaje("Listado preparado. Revisa las descargas.");
+    }
+  } catch (e) {
+    mensaje(e.message, true);
+  } finally {
+    ocupado = false;
   }
+};
+$("avisos").onclick = async () => {
+  try {
+    window.QuePanAndroid.permitirNotificaciones(await token());
+  } catch (e) {
+    mensaje(e.message, true);
+  }
+};
+window.resultadoAndroid = (texto, error) => mensaje(texto, error);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && perfil) refrescarSilencioso();
 });
-$("reintentar").addEventListener("click", guardar);

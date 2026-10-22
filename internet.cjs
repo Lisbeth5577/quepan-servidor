@@ -34,7 +34,7 @@ async function iniciar() {
     (t) => auth.verifyIdToken(t, true),
     (q) => api.operacion.run(q),
     (q) =>
-      require("./reporte_diario.cjs").generarReporte(
+      require("./reporte_ordenado.cjs").generarReporte(
         db,
         q.auth.uid,
         q.fecha,
@@ -42,16 +42,12 @@ async function iniciar() {
       ),
     require("./web.cjs").ORIGEN,
   );
-  const archivoApk = require("node:path").join(
-    __dirname,
-    "SIPROPAN-1.6-listados.apk",
+  const archivoApk = require("node:path").join(__dirname, "QUEPAN-2.0.apk");
+  const manejadorWeb = require("./web.cjs").conWeb(
+    require("./descargas.cjs").conDescargas(operar, archivoApk),
+    { db, verificar: (t) => auth.verifyIdToken(t, true) },
   );
-  const servidor = http.createServer(
-    require("./web.cjs").conWeb(
-      require("./descargas.cjs").conDescargas(operar, archivoApk),
-      { db, verificar: (t) => auth.verifyIdToken(t, true) },
-    ),
-  );
+  const servidor = http.createServer(manejadorWeb);
   servidor.requestTimeout = 30000;
   servidor.headersTimeout = 10000;
   const pararAvisos = iniciarAvisos(api, db);
@@ -60,6 +56,7 @@ async function iniciar() {
   );
   const parar = async () => {
     await pararAvisos();
+    manejadorWeb.cerrarConexiones();
     await new Promise((resolve) => servidor.close(resolve));
     await db.terminate();
   };

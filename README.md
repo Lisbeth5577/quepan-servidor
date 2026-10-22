@@ -1,7 +1,10 @@
-# SIPROPAN - servidor academico
+# Panadería San Carlos «QUE PAN»
 
-Copia de publicacion del servidor Panaderia San Carlos. Docker con Node22, inicio node internet.cjs, puerto PORT (10000). El alojamiento proporciona HTTPS. Autenticacion Firebase y permisos por rol en cada operacion. Datos en Firestore. No contiene credenciales ni respaldos.
+Aplicación web y Android para producción, inventario, pedidos, rutas y sucursales. El servidor Node.js valida identidad, permisos y reservas en transacciones Firestore. Los pedidos se cancelan sin borrar su historial.
 
-GOOGLE_APPLICATION_CREDENTIALS debe apuntar a un archivo secreto de cuenta de servicio de este proyecto, fuera del repositorio y del APK.
+Publicación: https://sipropan-servidor.onrender.com/web/
+APK: https://sipropan-servidor.onrender.com/
 
-Render Free duerme tras15min sin trafico entrante; al reactivarse recupera revisiones de stock y avisos pendientes. No garantiza alertas inmediatas24/7.
+Credenciales administrativas únicamente en el secreto del alojamiento. Nunca en GitHub ni APK. Se conserva el identificador interno de Android para actualizar la aplicación instalada.
+
+El alojamiento gratuito puede entrar en reposo. La disponibilidad se actualiza con conexión y se vuelve a validar al guardar. Los inventarios anteriores de sucursal requieren un conteo físico explícito.

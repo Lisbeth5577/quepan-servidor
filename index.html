@@ -3,23 +3,41 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>SIPROPAN · Panadería San Carlos · UMG</title>
+    <meta name="theme-color" content="#49634f" />
+    <title>Panadería San Carlos «QUE PAN»</title>
     <link rel="stylesheet" href="/web/panaderia.css" />
     <script src="/web/panaderia.js" defer></script>
   </head>
   <body>
-    <header>
-      <div class="marca">SC</div>
-      <div>
-        <p class="institucion">Universidad Mariano Gálvez de Guatemala</p>
-        <h1>Panadería San Carlos</h1>
-        <p>SIPROPAN · Pedidos, producción e inventario</p>
-      </div>
+    <header class="topbar">
+      <a class="brand" href="/web/"
+        ><span class="seal">QP</span
+        ><span>Panadería San Carlos<strong>QUE PAN</strong></span></a
+      ><span class="tagline">Hecho con cariño. Compartido con orden.</span
+      ><a href="/" class="app-link">Nuestra app Android ↗</a>
     </header>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">EL PAN DE CADA DÍA, MEJOR ORGANIZADO</p>
+        <h1>Tradición en cada pan.<br />Orden en cada entrega.</h1>
+        <p>Producción, sucursales y pedidos en un solo lugar.</p>
+        <span class="hero-chip">San Carlos · QUE PAN</span>
+      </div>
+    </section>
     <main>
-      <section id="acceso" class="tarjeta">
-        <h2>Iniciar sesión</h2>
-        <p>Utiliza la misma cuenta asignada en SIPROPAN Android.</p>
+      <section id="acceso" class="login-card">
+        <div>
+          <p class="eyebrow">BIENVENIDO A QUE PAN</p>
+          <h2>Tu panadería, conectada.</h2>
+          <p>
+            Ingresa para consultar disponibilidad, preparar pedidos y acompañar
+            cada entrega.
+          </p>
+          <p class="nota">
+            La primera conexión puede tardar un momento si el servidor está en
+            reposo.
+          </p>
+        </div>
         <form id="login">
           <label
             >Correo<input
@@ -27,109 +45,156 @@
               type="email"
               required
               autocomplete="username"
-              maxlength="254" /></label
+              maxlength="254"
+              placeholder="Tu correo asignado" /></label
           ><label
             >Contraseña<input
               id="clave"
               type="password"
               required
-              autocomplete="current-password" /></label
-          ><button type="submit">Entrar</button>
+              autocomplete="current-password"
+              placeholder="Tu contraseña" /></label
+          ><button type="submit">Entrar a mi cuenta →</button>
         </form>
-        <p class="nota">
-          La primera conexión puede tardar alrededor de un minuto. No cierres la
-          página mientras inicia.
-        </p>
-        <p><a href="/">Descargar aplicación Android</a></p>
       </section>
       <p id="mensaje" role="status" aria-live="polite">
-        Ingresa con tu cuenta para consultar y gestionar la panadería.
+        Bienvenido a Panadería San Carlos «QUE PAN».
       </p>
       <div id="aplicacion" hidden>
-        <div class="sesion">
-          <strong id="usuario"></strong
-          ><button id="salir" class="secundario">Cerrar sesión</button
-          ><a href="/">Aplicación Android</a>
-        </div>
-        <nav id="modulos" aria-label="Módulos"></nav>
-        <div class="cabecera">
+        <div class="session">
           <div>
-            <p class="etiqueta">Gestión de la panadería</p>
-            <h2 id="titulo">Productos</h2>
+            <strong id="usuario"></strong
+            ><span id="conexion" class="live">Conectando disponibilidad…</span>
           </div>
-          <button id="actualizar" class="secundario">Actualizar</button>
-        </div>
-        <div class="herramientas">
-          <label
-            >Buscar en este listado<input
-              id="buscar"
-              type="search"
-              placeholder="Nombre, sucursal, estado o pedido" /></label
-          ><button id="nuevo" hidden>Nuevo registro</button>
-        </div>
-        <section id="captura" hidden>
-          <h3 id="titulo-formulario"></h3>
-          <form id="registro">
-            <div id="campos" class="campos"></div>
-            <div id="detalles"></div>
-            <div class="acciones">
-              <button type="button" id="agregar">Agregar producto</button
-              ><button type="submit">Guardar</button
-              ><button type="button" id="cancelar" class="secundario">
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </section>
-        <section id="reporte" hidden>
-          <h3>Descargar listado diario</h3>
-          <form id="descargar">
-            <div class="campos">
-              <label
-                >Fecha de Guatemala<input
-                  id="fecha-reporte"
-                  type="date"
-                  required /></label
-              ><label
-                >Tipo de listado<select id="tipo-reporte">
-                  <option value="pedidos">Solo pedidos registrados</option>
-                  <option value="programados">Solo pedidos programados</option>
-                  <option value="entregas">Solo entregas</option>
-                  <option value="despachos">Solo despachos</option>
-                  <option value="incidencias">Solo incidencias</option>
-                  <option value="reasignaciones">Solo reasignaciones</option>
-                  <option value="produccion">Solo producción</option>
-                  <option value="consumos">Solo consumos</option>
-                  <option value="entradas">
-                    Solo entradas de ingredientes
-                  </option>
-                  <option value="avisos">Solo avisos</option>
-                  <option value="intentos">Solo intentos de envío</option>
-                  <option value="todo">Todo el día</option>
-                </select></label
-              >
-            </div>
-            <p>Estado, unidad y ruta corresponden al momento de descargar.</p>
-            <button type="submit">Descargar CSV</button>
-          </form>
-        </section>
-        <section id="tabla">
-          <div class="tabla-contenedor">
-            <table>
-              <thead id="columnas"></thead>
-              <tbody id="filas"></tbody>
-            </table>
+          <div>
+            <button id="avisos" class="secondary" hidden>
+              Permitir notificaciones</button
+            ><button id="salir" class="secondary">Cerrar sesión</button>
           </div>
-          <p id="resumen" class="nota"></p>
-        </section>
-        <button id="reintentar" hidden>
-          Reintentar la misma solicitud pendiente
-        </button>
+        </div>
+        <div class="workspace">
+          <nav id="modulos" aria-label="Secciones"></nav>
+          <div class="content">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">EL DÍA EN TU PANADERÍA</p>
+                <h2 id="titulo">Productos</h2>
+              </div>
+              <div>
+                <button id="actualizar" class="secondary">Actualizar</button
+                ><button id="nuevo" hidden>Nuevo registro</button>
+              </div>
+            </div>
+            <p id="ayuda" class="nota"></p>
+            <div id="indicadores" class="metrics"></div>
+            <section id="captura" class="card" hidden>
+              <div class="section-head">
+                <h3 id="titulo-formulario"></h3>
+                <button id="cerrar-form" class="secondary" type="button">
+                  Cerrar
+                </button>
+              </div>
+              <form id="registro">
+                <div id="campos" class="fields"></div>
+                <div id="detalles" class="detail-list"></div>
+                <button type="button" id="agregar" class="secondary">
+                  + Agregar línea
+                </button>
+                <div class="form-actions">
+                  <button type="submit">Guardar cambios</button
+                  ><button type="button" id="cancelar" class="secondary">
+                    Volver sin guardar
+                  </button>
+                </div>
+              </form>
+            </section>
+            <section id="reporte" class="card" hidden>
+              <h3>Un listado claro para cada día</h3>
+              <p>
+                Una fila por producto. Fecha, hora y cantidades en columnas
+                independientes. O = operada; C = cancelada o versión sustituida.
+              </p>
+              <form id="descargar">
+                <div class="fields">
+                  <label
+                    >Fecha de actividad<input
+                      id="fecha-reporte"
+                      type="date"
+                      required /></label
+                  ><label
+                    >Listado<select id="tipo-reporte">
+                      <option value="pedidos">
+                        Pedidos con cambios y cancelaciones
+                      </option>
+                      <option value="programados">
+                        Pedidos programados para la fecha
+                      </option>
+                      <option value="entregas">Solo entregas</option>
+                      <option value="despachos">Solo despachos</option>
+                      <option value="modificaciones">
+                        Modificaciones (antes y después)
+                      </option>
+                      <option value="cancelaciones">Cancelaciones</option>
+                      <option value="incidencias">Incidencias</option>
+                      <option value="reasignaciones">Reasignaciones</option>
+                      <option value="ventas">
+                        Ventas y salidas de sucursal
+                      </option>
+                      <option value="produccion">Producción</option>
+                      <option value="consumos">Consumos de ingredientes</option>
+                      <option value="entradas">Entradas de ingredientes</option>
+                      <option value="catalogos">Cambios de catálogos</option>
+                      <option value="avisos">Avisos</option>
+                      <option value="intentos">Intentos de envío</option>
+                      <option value="todo">Toda la actividad del día</option>
+                    </select></label
+                  >
+                </div>
+                <button type="submit">Descargar para Excel ↓</button>
+              </form>
+            </section>
+            <section id="tabla">
+              <div class="filters">
+                <label
+                  >Buscar<input
+                    id="buscar"
+                    type="search"
+                    placeholder="Nombre, código o número de pedido" /></label
+                ><label
+                  >Sucursal<select id="f-sucursal">
+                    <option value="">Todas</option>
+                  </select></label
+                ><label
+                  >Producto<select id="f-producto">
+                    <option value="">Todos</option>
+                  </select></label
+                ><label
+                  >Ruta<select id="f-ruta">
+                    <option value="">Todas</option>
+                  </select></label
+                ><label
+                  >Estado<select id="f-estado">
+                    <option value="">Todos</option>
+                  </select></label
+                >
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead id="columnas"></thead>
+                  <tbody id="filas"></tbody>
+                </table>
+              </div>
+              <p id="resumen" class="nota"></p>
+            </section>
+            <button id="reintentar" hidden>
+              Reintentar la misma solicitud pendiente
+            </button>
+          </div>
+        </div>
       </div>
     </main>
     <footer>
-      Proyecto académico · Desarrollo Web · UMG · Datos compartidos con Android
-      mediante Firebase
+      Panadería San Carlos «QUE PAN» · Producción y distribución con cariño.
     </footer>
   </body>
 </html>

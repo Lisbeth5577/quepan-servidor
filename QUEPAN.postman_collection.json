@@ -1,0 +1,223 @@
+{
+  "info": {
+    "name": "QUE PAN - Consultas y operaciones",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://sipropan-servidor.onrender.com"
+    },
+    {
+      "key": "firebase_id_token",
+      "value": ""
+    },
+    {
+      "key": "fecha",
+      "value": "2026-10-21"
+    },
+    {
+      "key": "fecha_entrega",
+      "value": ""
+    },
+    {
+      "key": "sucursal_id",
+      "value": ""
+    },
+    {
+      "key": "producto_id",
+      "value": ""
+    },
+    {
+      "key": "pedido_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Salud",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{firebase_id_token}}"
+          }
+        ],
+        "url": "{{base_url}}/salud"
+      }
+    },
+    {
+      "name": "Mi perfil",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{firebase_id_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/perfil"
+      }
+    },
+    {
+      "name": "Productos disponibles",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{firebase_id_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/datos?modulo=productos"
+      }
+    },
+    {
+      "name": "Pedidos activos",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{firebase_id_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/datos?modulo=pedidos"
+      }
+    },
+    {
+      "name": "Inventario por sucursal",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{firebase_id_token}}"
+          }
+        ],
+        "url": "{{base_url}}/api/datos?modulo=inventario_sucursales"
+      }
+    },
+    {
+      "name": "Listado diario de pedidos e historial",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{firebase_id_token}}"
+          }
+        ],
+        "url": "{{base_url}}/reportes/diario.csv?fecha={{fecha}}&tipo=pedidos"
+      }
+    },
+    {
+      "name": "Solo entregas",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{firebase_id_token}}"
+          }
+        ],
+        "url": "{{base_url}}/reportes/diario.csv?fecha={{fecha}}&tipo=entregas"
+      }
+    },
+    {
+      "name": "Solo cancelaciones",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{firebase_id_token}}"
+          }
+        ],
+        "url": "{{base_url}}/reportes/diario.csv?fecha={{fecha}}&tipo=cancelaciones"
+      }
+    },
+    {
+      "name": "Nuevo pedido",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{firebase_id_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/operacion",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"accion\": \"crearPedido\",\n    \"solicitudId\": \"{{$guid}}\",\n    \"sucursalId\": \"{{sucursal_id}}\",\n    \"origenId\": \"PRODUCCION\",\n    \"fechaEntrega\": \"{{fecha_entrega}}\",\n    \"comentarios\": \"\",\n    \"detalles\": [\n      {\n        \"productoId\": \"{{producto_id}}\",\n        \"cantidad\": 1\n      }\n    ]\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Ejemplo de mutación. Ejecutar solo con datos y autorización adecuados; conservar solicitudId al reintentar la misma operación."
+      }
+    },
+    {
+      "name": "Cancelar pedido pendiente",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{firebase_id_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/operacion",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"accion\": \"cancelarPedido\",\n    \"solicitudId\": \"{{$guid}}\",\n    \"pedidoId\": \"{{pedido_id}}\",\n    \"motivo\": \"Corrección solicitada\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Ejemplo de mutación. Ejecutar solo con datos y autorización adecuados; conservar solicitudId al reintentar la misma operación."
+      }
+    },
+    {
+      "name": "Venta o salida",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{firebase_id_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/operacion",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"accion\": \"ventaSucursal\",\n    \"solicitudId\": \"{{$guid}}\",\n    \"sucursalId\": \"{{sucursal_id}}\",\n    \"productoId\": \"{{producto_id}}\",\n    \"cantidad\": 1,\n    \"motivo\": \"Venta del día\"\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Ejemplo de mutación. Ejecutar solo con datos y autorización adecuados; conservar solicitudId al reintentar la misma operación."
+      }
+    }
+  ]
+}
