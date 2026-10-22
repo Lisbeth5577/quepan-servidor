@@ -330,6 +330,7 @@ async function generarReporte(db, uid, fecha, tipo = "todo") {
     "\r\n";
   return {
     archivo: `QUEPAN_${tipo}_${fecha}.csv`,
+    tabla: [TITULOS, ...selected.map((x) => x.row)],
     csv,
     filas: selected.length,
     tipo,

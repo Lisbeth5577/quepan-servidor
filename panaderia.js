@@ -1157,12 +1157,16 @@ $("descargar").onsubmit = async (e) => {
     const fecha = $("fecha-reporte").value,
       tipo = $("tipo-reporte").value;
     if (window.QuePanAndroid) {
-      window.QuePanAndroid.descargarReporte(fecha, tipo, await token());
+      if (typeof window.QuePanAndroid.descargarExcel !== "function")
+        throw Error(
+          "Actualiza QUE PAN a la versión 2.1 para descargar archivos Excel.",
+        );
+      window.QuePanAndroid.descargarExcel(fecha, tipo, await token());
       mensaje("Elige dónde guardar el listado.");
     } else {
       mensaje("Preparando listado…");
       const r = await fetch(
-        "/reportes/diario.csv?fecha=" +
+        "/reportes/diario.xlsx?fecha=" +
           encodeURIComponent(fecha) +
           "&tipo=" +
           tipo,
@@ -1178,10 +1182,17 @@ $("descargar").onsubmit = async (e) => {
       const url = URL.createObjectURL(await r.blob()),
         a = nodo("a");
       a.href = url;
-      a.download = "QUEPAN_" + tipo + "_" + fecha + ".csv";
+      a.download = "QUEPAN_" + tipo + "_" + fecha + ".xlsx";
+      a.textContent = "Guardar archivo Excel";
+      a.className = "app-link";
+      $("enlace-descarga")?.remove();
+      a.id = "enlace-descarga";
+      $("descargar").append(a);
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 30000);
-      mensaje("Listado preparado. Revisa las descargas.");
+      mensaje(
+        "Excel preparado. Si no inició la descarga, pulsa Guardar archivo Excel.",
+      );
     }
   } catch (e) {
     mensaje(e.message, true);

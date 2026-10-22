@@ -1,4 +1,4 @@
-# Panadería San Carlos «QUE PAN» — Actualización 2.0
+# Panadería San Carlos «QUE PAN» — Actualización 2.1
 
 ## Qué cambió
 
@@ -16,7 +16,7 @@
 - Inventario por sucursal: entrega recibida suma producto; venta/salida descuenta; conteo registra explícitamente el saldo físico con motivo y auditoría. Con una unidad o menos se muestra la necesidad de pedir más.
 - Pedido entre sucursales: elegir la sucursal de origen, reservar su stock, despachar desde ella y confirmar la recepción en destino. Se consulta dirección y stock; no se calcula cercanía por GPS ni distancia.
 - Filtros de sucursal, producto, ruta y estado en los listados donde aplican.
-- Reportes CSV para Excel: fecha, hora, número de pedido, sucursal, vendedor, código, descripción, cantidades solicitadas/despachadas/entregadas, cantidad del movimiento, unidad, actividad, O/C, estado, fecha solicitada, origen, ruta, vehículo, comentarios y operador.
+- Reportes Excel (.xlsx): fecha, hora, número de pedido, sucursal, vendedor, código, descripción, cantidades solicitadas/despachadas/entregadas, cantidad del movimiento, unidad, actividad, O/C, estado, fecha solicitada, origen, ruta, vehículo, comentarios y operador.
 
 ## Cómo usarlo
 
@@ -39,7 +39,7 @@ Respaldo previo de 469 archivos de código verificado como ZIP. Respaldo Firebas
 
 Prueba visual en copia local: Terminal guardó ST-01 con comentarios, fecha y reserva. Esa operación de prueba no se creó en Firebase real.
 
-APK compilado con revisión Android sin errores; advertencias de JavaScript requerido y un recurso no utilizado. Firma compatible con la versión anterior. La prueba física de esta actualización debe confirmarse después de instalarla.
+APK 2.1 compilado con revisión Android sin errores; advertencias de JavaScript requerido y un recurso no utilizado. Firma compatible con la versión anterior. La prueba física de esta actualización debe confirmarse después de instalarla.
 
 ## Datos que se conservan y límites
 
@@ -58,3 +58,7 @@ Verificación de restauración: outputs/RESPALDO_QUEPAN_2026-10-21/datos_verific
 Datos completos privados: work/firebase_privado/respaldo_QUEPAN_2026-10-21.json
 
 No se incluyen contraseñas ni claves privadas en la entrega.
+
+## Descargar Excel
+
+En Reportes diarios elige fecha y listado y pulsa Descargar Excel (.xlsx). En la web se guarda un libro Excel; queda además el enlace Guardar archivo Excel si el navegador no inicia automáticamente. En Android 2.1 elige la carpeta y confirma Guardar; después puedes pulsar Abrir para elegir Excel u otra aplicación compatible. La descarga CSV de versiones anteriores se conserva por compatibilidad.

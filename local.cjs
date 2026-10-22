@@ -29,7 +29,7 @@ function crearManejador(verificar, operar, reportar, origenWeb) {
       return responder(200, { estado: "ACTIVO", servicio: "SIPROPAN local" });
     const esReporte =
       req.method === "GET" &&
-      req.url.startsWith("/reportes/diario.csv?") &&
+      /^\/reportes\/diario\.(csv|xlsx)\?/.test(req.url) &&
       typeof reportar === "function";
     if (!esReporte && (req.url !== "/operacion" || req.method !== "POST"))
       return responder(404, {
@@ -65,13 +65,21 @@ function crearManejador(verificar, operar, reportar, origenWeb) {
           fecha,
           tipo,
         });
+        const excel = req.url.startsWith("/reportes/diario.xlsx?");
+        const datos = excel
+          ? await require("./excel.cjs").crearExcel(reporte)
+          : Buffer.from(reporte.csv, "utf8");
+        const archivo = excel
+          ? reporte.archivo.replace(/\.csv$/, ".xlsx")
+          : reporte.archivo;
         res.writeHead(200, {
-          "Content-Type": "text/csv; charset=utf-8",
-          "Content-Disposition":
-            'attachment; filename="' + reporte.archivo + '"',
-          "Content-Length": Buffer.byteLength(reporte.csv, "utf8"),
+          "Content-Type": excel
+            ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            : "text/csv; charset=utf-8",
+          "Content-Disposition": 'attachment; filename="' + archivo + '"',
+          "Content-Length": datos.length,
         });
-        res.end(reporte.csv);
+        res.end(datos);
         return;
       }
       fase = "cuerpo";
