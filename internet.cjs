@@ -42,7 +42,7 @@ async function iniciar() {
       ),
     require("./web.cjs").ORIGEN,
   );
-  const archivoApk = require("node:path").join(__dirname, "QUEPAN-2.2.apk");
+  const archivoApk = require("node:path").join(__dirname, "QUEPAN-2.3.apk");
   const manejadorWeb = require("./web.cjs").conWeb(
     require("./descargas.cjs").conDescargas(operar, archivoApk),
     { db, verificar: (t) => auth.verifyIdToken(t, true) },
