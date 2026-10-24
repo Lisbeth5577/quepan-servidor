@@ -3,6 +3,7 @@ const fs = require("fs"),
   path = require("path"),
   d = require("./domain"),
   { consultar } = require("./consultas.cjs");
+const { generarDashboard } = require("./dashboard.cjs");
 const ORIGEN = "https://sipropan-servidor.onrender.com";
 function conWeb(
   siguiente,
@@ -13,6 +14,7 @@ function conWeb(
     "/web/": "index.html",
     "/web/index.html": "index.html",
     "/web/panaderia.js": "panaderia.js",
+    "/web/dashboard-ui.js": "dashboard-ui.js",
     "/web/panaderia.css": "panaderia.css",
     "/web/pan-pixel.png": "pan-pixel.png",
   };
@@ -39,7 +41,9 @@ function conWeb(
     }
     if (
       req.method !== "GET" ||
-      !["/api/perfil", "/api/datos", "/api/eventos"].includes(url.pathname)
+      !["/api/perfil", "/api/datos", "/api/eventos", "/api/dashboard"].includes(
+        url.pathname,
+      )
     )
       return siguiente(req, res);
     res.setHeader("Cache-Control", "no-store");
@@ -101,20 +105,34 @@ function conWeb(
           "inventario_sucursales",
           "pedidos",
           "sucursales",
+          "ingredientes",
+          "producciones",
+          "salidas_sucursales",
+          "incidencias",
         ])
           paradas.push(db.collection(c).onSnapshot(enviar, cerrar));
         res.write(": conectado\n\n");
         return;
       }
       const result =
-        url.pathname === "/api/perfil"
-          ? {
-              uid: identidad.uid,
-              nombre: p.nombre,
-              rol: p.rol,
-              sucursalId: p.sucursalId || null,
-            }
-          : await consultar(db, identidad.uid, url.searchParams.get("modulo"));
+        url.pathname === "/api/dashboard"
+          ? await generarDashboard(
+              db,
+              identidad.uid,
+              url.searchParams.get("mes"),
+            )
+          : url.pathname === "/api/perfil"
+            ? {
+                uid: identidad.uid,
+                nombre: p.nombre,
+                rol: p.rol,
+                sucursalId: p.sucursalId || null,
+              }
+            : await consultar(
+                db,
+                identidad.uid,
+                url.searchParams.get("modulo"),
+              );
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
       res.end(JSON.stringify(result));
     } catch (e) {

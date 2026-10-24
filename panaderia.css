@@ -526,3 +526,123 @@ footer {
     font-size: 21px;
   }
 }
+
+/* Resumen principal: cifras, tablas y barras accesibles sin librerías externas. */
+.dash-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+}
+.dash-intro label {
+  min-width: 180px;
+}
+.dash-cifras {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+.dash-cifra {
+  background: #e9eee2;
+  border: 1px solid #d7dfcb;
+  border-radius: 14px;
+  padding: 18px;
+  min-width: 0;
+}
+.dash-cifra:nth-child(3n + 2) {
+  background: #f0e0dc;
+  border-color: #e4ccc5;
+}
+.dash-cifra span {
+  display: block;
+  font-size: 12px;
+  color: #515a46;
+}
+.dash-cifra strong {
+  display: block;
+  font-size: 26px;
+  color: #405b49;
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+.dash-cifra small {
+  display: block;
+  font-size: 11px;
+}
+.dash-doble {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.dash-doble .card {
+  min-width: 0;
+}
+.dash-top {
+  font-family: Georgia, serif;
+  font-size: 24px;
+  color: #49634f;
+  margin: 16px 0;
+}
+.dash-barras {
+  max-height: 320px;
+  overflow: auto;
+}
+.dash-barra {
+  display: grid;
+  grid-template-columns: 26px 1fr 40px;
+  align-items: center;
+  gap: 10px;
+  margin: 9px 0;
+  font-size: 12px;
+}
+.dash-barra meter {
+  width: 100%;
+  height: 18px;
+  accent-color: #49634f;
+}
+.dash-recuento {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  border-bottom: 1px solid #e4e3d8;
+  padding: 9px 0;
+  font-size: 13px;
+}
+.flujo-stock {
+  padding-left: 22px;
+  line-height: 1.8;
+}
+.consumo-previo {
+  grid-column: 1/-1;
+  overflow: auto;
+  border: 1px solid #d7dfcb;
+  border-radius: 12px;
+  padding: 16px;
+}
+.consumo-previo table {
+  font-size: 12px;
+}
+.consumo-previo h4 {
+  margin-top: 0;
+}
+@media (max-width: 1000px) {
+  .dash-doble {
+    grid-template-columns: 1fr;
+  }
+  .dash-intro {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+@media (max-width: 520px) {
+  .dash-cifras {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dash-cifra {
+    padding: 12px;
+  }
+  .dash-cifra strong {
+    font-size: 21px;
+  }
+}

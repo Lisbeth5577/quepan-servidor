@@ -7,6 +7,7 @@
     <title>Panadería San Carlos «QUE PAN»</title>
     <link rel="stylesheet" href="/web/panaderia.css" />
     <script src="/web/panaderia.js" defer></script>
+    <script src="/web/dashboard-ui.js" defer></script>
   </head>
   <body>
     <header class="topbar">
@@ -86,6 +87,111 @@
               </div>
             </div>
             <p id="ayuda" class="nota"></p>
+            <section
+              id="dashboard"
+              hidden
+              aria-label="Resumen general del sistema"
+            >
+              <div class="card dash-intro">
+                <div>
+                  <p class="eyebrow">PANORAMA DE TU PANADERÍA</p>
+                  <h3>Todo el sistema, en un solo lugar</h3>
+                  <p>
+                    Elige un mes para revisar la demanda y las entregas. Las
+                    existencias muestran el saldo actual.
+                  </p>
+                </div>
+                <label
+                  >Mes del resumen<input
+                    id="dash-mes"
+                    type="month"
+                    min="2000-01"
+                    max="2099-12"
+                    required
+                /></label>
+              </div>
+              <p id="dash-actualizado" class="nota" role="status"></p>
+              <div id="dash-cifras" class="dash-cifras"></div>
+              <div id="dash-cantidades" class="dash-cifras"></div>
+              <div class="dash-doble">
+                <section class="card">
+                  <h3>Producto más pedido</h3>
+                  <p class="nota">
+                    Según el número de pedidos vigentes en que aparece.
+                    Cantidades con su unidad.
+                  </p>
+                  <div id="dash-top"></div>
+                  <div id="dash-ranking" class="table-wrap"></div>
+                </section>
+                <section class="card">
+                  <h3>Pedidos por sucursal</h3>
+                  <p class="nota">
+                    Pedidos vigentes creados en el mes seleccionado.
+                  </p>
+                  <div id="dash-sucursales"></div>
+                </section>
+              </div>
+              <div class="dash-doble">
+                <section class="card">
+                  <h3>Actividad diaria del mes</h3>
+                  <p class="nota">Pedidos vigentes por fecha de creación.</p>
+                  <div id="dash-dias" class="dash-barras"></div>
+                </section>
+                <section class="card">
+                  <h3>Estado de los pedidos del mes</h3>
+                  <div id="dash-estados"></div>
+                  <h3>Recuento de todo el sistema</h3>
+                  <div id="dash-totales"></div>
+                </section>
+              </div>
+              <section class="card">
+                <h3>Inventario actual y producción</h3>
+                <p class="nota">
+                  No corresponde a un cierre histórico del mes. Las cantidades
+                  de unidades distintas se muestran separadas.
+                </p>
+                <div id="dash-inventario" class="dash-cifras"></div>
+                <div class="dash-doble">
+                  <div>
+                    <h4>Producto terminado por reponer</h4>
+                    <div id="dash-alertas-productos" class="table-wrap"></div>
+                  </div>
+                  <div>
+                    <h4>Materia prima por reponer</h4>
+                    <div
+                      id="dash-alertas-ingredientes"
+                      class="table-wrap"
+                    ></div>
+                  </div>
+                </div>
+                <p id="dash-faltantes" class="nota"></p>
+              </section>
+              <section class="card">
+                <h3>Así se mueve el inventario</h3>
+                <ol class="flujo-stock">
+                  <li>
+                    <strong>Producir:</strong> baja la materia prima según la
+                    receta y sube el producto terminado.
+                  </li>
+                  <li>
+                    <strong>Crear pedido:</strong> reserva unidades disponibles;
+                    no descuenta dos veces.
+                  </li>
+                  <li>
+                    <strong>Despachar:</strong> baja el producto del origen y
+                    libera su reserva.
+                  </li>
+                  <li>
+                    <strong>Entregar:</strong> suma unidades en la sucursal de
+                    destino.
+                  </li>
+                  <li>
+                    <strong>Vender:</strong> baja el producto terminado de la
+                    sucursal.
+                  </li>
+                </ol>
+              </section>
+            </section>
             <div id="indicadores" class="metrics"></div>
             <section id="captura" class="card" hidden>
               <div class="section-head">
@@ -111,8 +217,9 @@
             <section id="reporte" class="card" hidden>
               <h3>Un listado claro para cada día</h3>
               <p>
-                Archivo Excel (.xlsx), una fila por producto. Fecha, hora y cantidades en columnas
-                independientes. O = operada; C = cancelada o versión sustituida.
+                Archivo Excel (.xlsx), una fila por producto. Fecha, hora y
+                cantidades en columnas independientes. O = operada; C =
+                cancelada o versión sustituida.
               </p>
               <form id="descargar">
                 <div class="fields">

@@ -669,7 +669,15 @@ function crearNegocio(db) {
         for (const l of items) {
           const i = await leer("ingredientes", l.ingredienteId);
           d.exigir(i?.activo, "Ingrediente inactivo");
-          changes.push([i.id, d.descontar(i.existencia, l.cantidad)]);
+          const posterior = d.descontar(i.existencia, l.cantidad);
+          Object.assign(l, {
+            codigo: i.codigo || i.id,
+            nombre: i.nombre,
+            unidad: i.unidad || "",
+            anterior: i.existencia,
+            posterior,
+          });
+          changes.push([i.id, posterior]);
         }
         const total = red(p.existencia + amount);
         cantidad0(total);
@@ -681,6 +689,12 @@ function crearNegocio(db) {
           productoId: id,
           cantidad: amount,
           consumos: items,
+          existenciaAnterior: p.existencia,
+          existenciaPosterior: total,
+          productoNombre: p.nombre,
+          codigo: p.codigo || id,
+          unidad: p.unidad || "",
+          recetaRendimiento: rec.rendimiento,
           estado: "FINALIZADA",
           usuarioUid: uid,
           creado: stamp(),

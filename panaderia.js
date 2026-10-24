@@ -17,6 +17,7 @@ let sesion = null,
   stream = null,
   refreshTimer;
 const nombres = {
+  dashboard: "Resumen general",
   productos: "Productos",
   pedidos: "Pedidos y entregas",
   inventario_sucursales: "Inventario por sucursal",
@@ -166,7 +167,7 @@ $("login").onsubmit = async (e) => {
         boton(s, () => abrir(m), $("modulos"));
     $("avisos").hidden = !window.QuePanAndroid;
     await cargarCatalogos();
-    await abrir("productos");
+    await abrir(gerente() ? "dashboard" : "productos");
     conectar();
   } catch (err) {
     sesion = null;
@@ -209,11 +210,14 @@ async function refrescarSilencioso() {
   refrescando = true;
   try {
     await cargarCatalogos();
-    if (modulo !== "reportes") {
+    if (modulo === "dashboard") {
+      await Dashboard.cargar(true);
+    } else if (modulo !== "reportes") {
       datos = (await api("/api/datos?modulo=" + modulo)).filas;
       pintar();
     }
     actualizarLimites();
+    if (accion === "producir" && !$("captura").hidden) vistaConsumo();
     $("conexion").textContent =
       "● Disponibilidad actualizada · " +
       new Date().toLocaleTimeString("es-GT");
@@ -282,7 +286,8 @@ async function abrir(m) {
   $("ayuda").textContent = ayudas[m] || "";
   $("captura").hidden = true;
   $("reporte").hidden = m !== "reportes";
-  $("tabla").hidden = m === "reportes";
+  $("tabla").hidden = ["reportes", "dashboard"].includes(m);
+  $("dashboard").hidden = m !== "dashboard";
   $("buscar").value = "";
   $("indicadores").replaceChildren();
   for (const b of $("modulos").children)
@@ -298,6 +303,10 @@ async function abrir(m) {
   };
   $("nuevo").hidden = !(alta[m] && (m === "pedidos" || gerente()));
   $("nuevo").textContent = alta[m] || "";
+  if (m === "dashboard") {
+    await Dashboard.cargar();
+    return;
+  }
   if (m === "reportes") {
     $("fecha-reporte").value = hoy();
     mensaje(
@@ -768,6 +777,7 @@ function formulario(a, x = null) {
   registroId = x?.id || "";
   coleccionActual = modulo;
   lineasTipo = "productos";
+  $("registro").querySelector("button[type=submit]").disabled = false;
   $("campos").replaceChildren();
   $("detalles").replaceChildren();
   $("captura").hidden = false;
@@ -868,8 +878,21 @@ function formulario(a, x = null) {
         (q.value =
           (catalogos.recetas || []).find((r) => r.id === s.value)
             ?.rendimiento || 1);
-      s.onchange = lote;
+      nodo(
+        "p",
+        "Al confirmar se descontarán estos ingredientes y se sumarán las unidades terminadas. Los reintentos de la misma solicitud no repiten el descuento.",
+        $("campos"),
+      ).className = "nota";
+      const vista = nodo("div", undefined, $("campos"));
+      vista.id = "vista-consumo";
+      vista.className = "consumo-previo";
+      s.onchange = () => {
+        lote();
+        vistaConsumo();
+      };
+      q.oninput = vistaConsumo;
       lote();
+      vistaConsumo();
     }
   }
   if (["despachar", "reasignar"].includes(a)) {
@@ -1211,3 +1234,77 @@ window.resultadoAndroid = (texto, error) => mensaje(texto, error);
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden && perfil) refrescarSilencioso();
 });
+
+// Vista previa educativa; la transacción del servidor vuelve a validar todos los saldos.
+function vistaConsumo() {
+  const box = $("vista-consumo");
+  if (!box || accion !== "producir") return;
+  box.replaceChildren();
+  const cantidad = Number($("cantidad").value),
+    id = $("articulo").value;
+  const receta = (catalogos.recetas || []).find((x) => x.id === id);
+  const producto = (catalogos.productos || []).find((x) => x.id === id);
+  const guardar = $("registro").querySelector("button[type=submit]");
+  guardar.disabled = true;
+  if (
+    !receta ||
+    !producto ||
+    cantidad <= 0 ||
+    !Number.isFinite(cantidad) ||
+    cantidad > 1000000 ||
+    Math.abs(cantidad * 100 - Math.round(cantidad * 100)) > 0.000001
+  ) {
+    nodo(
+      "p",
+      "Elige una receta y una cantidad válida (hasta dos decimales).",
+      box,
+    );
+    return;
+  }
+  let valido = true;
+  nodo("h4", "Consumo de materia prima", box);
+  const tabla = nodo("table", undefined, box),
+    head = nodo("tr", undefined, nodo("thead", undefined, tabla));
+  ["Ingrediente", "Existencia", "Consumo", "Saldo previsto"].forEach((t) =>
+    nodo("th", t, head),
+  );
+  const body = nodo("tbody", undefined, tabla);
+  for (const l of receta.ingredientes || []) {
+    const i = (catalogos.ingredientes || []).find(
+      (x) => x.id === l.ingredienteId,
+    );
+    const calculo =
+        (Number(l.cantidad) * cantidad) / Number(receta.rendimiento),
+      uso = Math.round(calculo * 100) / 100;
+    const exacto =
+      Number.isFinite(calculo) &&
+      Math.abs(calculo * 100 - Math.round(calculo * 100)) < 0.000001 &&
+      uso > 0;
+    const saldo = Math.round(((i?.existencia || 0) - uso) * 100) / 100;
+    if (!i || !exacto || saldo < 0) valido = false;
+    const tr = nodo("tr", undefined, body),
+      u = i?.unidad || "";
+    [
+      i?.nombre || l.ingredienteId,
+      (i?.existencia || 0) + " " + u,
+      exacto ? uso + " " + u : "Ajustar cantidad del lote",
+      exacto ? saldo + " " + u : "—",
+    ].forEach((t) => nodo("td", t, tr));
+  }
+  const despues =
+    Math.round((Number(producto.existencia || 0) + cantidad) * 100) / 100;
+  if (!receta.ingredientes?.length || despues > 1000000) valido = false;
+  nodo(
+    "p",
+    `Producto terminado: ${producto.existencia || 0} + ${cantidad} = ${despues} ${producto.unidad || ""}.`,
+    box,
+  );
+  nodo(
+    "p",
+    valido
+      ? "Listo para confirmar. Se guardará el consumo junto con la producción."
+      : "No se puede producir este lote: revisa la materia prima disponible, el límite de existencia o la precisión de la receta.",
+    box,
+  ).className = valido ? "nota" : "error";
+  guardar.disabled = !valido;
+}
