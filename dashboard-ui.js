@@ -53,6 +53,21 @@ const Dashboard = (() => {
     if (!silencioso) {
       mensaje("Preparando el resumen general…");
       $("dash-actualizado").textContent = "Consultando el mes " + mes + "…";
+      // No mostrar cifras del mes anterior mientras responde el nuevo.
+      [
+        "dash-cifras",
+        "dash-cantidades",
+        "dash-top",
+        "dash-ranking",
+        "dash-sucursales",
+        "dash-dias",
+        "dash-estados",
+        "dash-totales",
+        "dash-inventario",
+        "dash-alertas-productos",
+        "dash-alertas-ingredientes",
+        "dash-faltantes",
+      ].forEach((k) => $(k).replaceChildren());
     }
     try {
       const x = await api("/api/dashboard?mes=" + mes);
@@ -175,7 +190,10 @@ const Dashboard = (() => {
     const dias = $("dash-dias");
     dias.replaceChildren();
     const max = Math.max(1, ...x.dias.map((a) => a.vigentes));
-    for (const a of x.dias) {
+    const diasConActividad = x.dias.filter((a) => a.vigentes > 0);
+    if (!diasConActividad.length)
+      nodo("p", "Sin pedidos vigentes en este mes.", dias).className = "nota";
+    for (const a of diasConActividad) {
       const f = nodo("div", undefined, dias);
       f.className = "dash-barra";
       nodo("span", a.dia.slice(8), f);

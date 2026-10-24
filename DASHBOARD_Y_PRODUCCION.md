@@ -5,7 +5,7 @@ El gerente abre directamente «Resumen general» al iniciar sesión, tanto en la
 ## Resumen mensual
 - Selector de mes con horario de Guatemala.
 - Pedidos registrados, vigentes y cancelados; un pedido se cuenta una sola vez, sin duplicar versiones de su historial.
-- Cantidades solicitadas, entregadas, producidas y vendidas/retiradas, separadas por unidad.
+- Cantidades solicitadas, entregadas, producidas y vendidas/retiradas, separadas por unidad. Se unifican UND/unidad/unidades como UND y las variantes de kilogramo como KG, sin convertir piezas en peso.
 - Entregas por fecha real de confirmación, aunque el pedido se haya creado en otro mes.
 - Producto presente en más pedidos vigentes; muestra empates y ranking. La cantidad solicitada de cada producto también se muestra con su unidad.
 - Pedidos por sucursal y actividad diaria.

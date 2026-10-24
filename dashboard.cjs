@@ -21,10 +21,21 @@ function mesValido(mes) {
   return mes;
 }
 const red = (n) => Math.round(n * 100) / 100;
+// Unificar solo equivalencias de la misma unidad, sin convertir kilogramos a piezas.
+function unidadNormalizada(v) {
+  const u = String(v || "SIN UNIDAD")
+    .trim()
+    .toUpperCase();
+  return ["UNIDAD", "UNIDADES", "UND"].includes(u)
+    ? "UND"
+    : ["KG", "KILOGRAMO", "KILOGRAMOS"].includes(u)
+      ? "KG"
+      : u;
+}
 function agruparCantidades(filas) {
   const m = new Map();
   for (const x of filas) {
-    const u = x.unidad || "SIN UNIDAD";
+    const u = unidadNormalizada(x.unidad);
     m.set(u, red((m.get(u) || 0) + Number(x.cantidad || 0)));
   }
   return [...m].sort().map(([unidad, cantidad]) => ({ unidad, cantidad }));
@@ -61,7 +72,7 @@ function resumir(datos, mes) {
     pedidos.flatMap((p) =>
       (p.detalles || []).map((l) => ({
         ...l,
-        unidad: l.unidad || pm.get(l.productoId)?.unidad || "SIN UNIDAD",
+        unidad: unidadNormalizada(l.unidad || pm.get(l.productoId)?.unidad),
       })),
     );
   const ranking = new Map(),
@@ -70,7 +81,7 @@ function resumir(datos, mes) {
     const ids = new Set();
     for (const l of pedido.detalles || []) {
       const prod = pm.get(l.productoId) || {},
-        unidad = l.unidad || prod.unidad || "SIN UNIDAD",
+        unidad = unidadNormalizada(l.unidad || prod.unidad),
         key = l.productoId + "|" + unidad;
       const a = ranking.get(key) || {
         productoId: l.productoId,
