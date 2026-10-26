@@ -40,3 +40,6 @@ Datos: work/firebase_privado/respaldo_DASHBOARD_2026-10-24.json, 116 documentos,
 
 ## Datos pendientes previos
 Existen pedidos históricos con reservas superiores a su stock físico. Se conservan y se advierten en el dashboard; requieren producción o corrección/cancelación por la usuaria. Existen conteos iniciales de sucursal pendientes; no se simulan existencias. Oracle sigue siendo una implementación separada y no se sincroniza automáticamente con Firebase.
+
+## Corrección del 25 de octubre: pruebas separadas
+La propietaria confirmó que todos los siete pedidos anteriores fueron pruebas. Se conservaron completos y se marcaron esPrueba=true. El resumen real debe mostrar 0 pedidos de octubre y excluir sus 221 unidades y sus entregas del ranking y gráficos. Un aviso contabiliza las pruebas excluidas. Los pedidos e historial permanecen consultables; el inventario no se reinicia ni se corrige de forma ficticia. El gerente puede marcar futuros pedidos de prueba en su formulario. La publicación de esta corrección debe comprobarse antes de darla por activa.

@@ -43,7 +43,7 @@ function agruparCantidades(filas) {
 function resumir(datos, mes) {
   mesValido(mes);
   const {
-    pedidos = [],
+    pedidos: pedidosGuardados = [],
     productos = [],
     ingredientes = [],
     sucursales = [],
@@ -52,6 +52,10 @@ function resumir(datos, mes) {
     inventario_sucursales: inventario = [],
     incidencias = [],
   } = datos;
+  // La usuaria puede conservar pedidos de prueba sin mezclarlos con operaciones reales.
+  const pedidosPrueba = pedidosGuardados.filter((x) => x.esPrueba === true);
+  const pedidos = pedidosGuardados.filter((x) => x.esPrueba !== true);
+  const idsPrueba = new Set(pedidosPrueba.map((x) => x.id));
   const pm = new Map(productos.map((x) => [x.id, x]));
   const activos = (xs) => xs.filter((x) => x.activo !== false);
   const cancelado = (x) => x.status === "C" || x.estado === "CANCELADO";
@@ -187,13 +191,21 @@ function resumir(datos, mes) {
     actualizado: new Date().toISOString(),
     criterios: {
       pedidos:
-        "Pedidos creados en el mes. Vigentes excluye cancelados; cada pedido se cuenta una sola vez.",
+        "Pedidos reales creados en el mes. Se excluyen pruebas; vigentes también excluye cancelados. Cada pedido se cuenta una sola vez.",
       entregas:
         "Confirmaciones de entrega realizadas en el mes, aunque el pedido se haya creado antes.",
       producto:
         "Producto presente en más pedidos vigentes del mes; las cantidades se muestran con su unidad.",
       inventario:
         "Existencias actuales; no son un cierre histórico del mes seleccionado.",
+    },
+    pruebasExcluidas: {
+      pedidosMes: pedidosPrueba.filter((x) => dentro(x.creado)).length,
+      pedidosTotal: pedidosPrueba.length,
+      cantidadesMes: agruparCantidades(
+        lineas(pedidosPrueba.filter((x) => dentro(x.creado))),
+      ),
+      nota: "Pedidos marcados como prueba excluidos del resumen real; sus registros e inventario se conservan.",
     },
     mesResumen: {
       registrados: delMes.length,
@@ -226,7 +238,12 @@ function resumir(datos, mes) {
       ).length,
       enRuta: pedidos.filter((x) => !cancelado(x) && x.estado === "EN_RUTA")
         .length,
-      incidencias: incidencias.filter((x) => x.estado === "ABIERTA").length,
+      incidencias: incidencias.filter(
+        (x) =>
+          x.estado === "ABIERTA" &&
+          !idsPrueba.has(x.pedidoId) &&
+          x.esPrueba !== true,
+      ).length,
       productos: prods.length,
       ingredientes: ings.length,
       sucursales: sucs.length,

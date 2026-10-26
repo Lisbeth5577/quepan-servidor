@@ -55,6 +55,7 @@ const Dashboard = (() => {
       $("dash-actualizado").textContent = "Consultando el mes " + mes + "…";
       // No mostrar cifras del mes anterior mientras responde el nuevo.
       [
+        "dash-pruebas",
         "dash-cifras",
         "dash-cantidades",
         "dash-top",
@@ -81,6 +82,7 @@ const Dashboard = (() => {
           mes +
           ". No uses las cifras anteriores como datos de este mes.";
         [
+          "dash-pruebas",
           "dash-cifras",
           "dash-cantidades",
           "dash-top",
@@ -99,13 +101,15 @@ const Dashboard = (() => {
     }
   }
   function pintar(x) {
+    $("dash-pruebas").textContent =
+      `Resumen de pedidos reales. Se excluyen ${x.pruebasExcluidas?.pedidosMes || 0} pedidos de prueba en este mes (${unidades(x.pruebasExcluidas?.cantidadesMes)}). Las pruebas se conservan en pedidos e historial. Las existencias siguen mostrando los saldos registrados; esta clasificación no corrige el inventario físico.`;
     const m = x.mesResumen,
       t = x.total,
       p = $("dash-cifras");
     p.replaceChildren();
     tarjeta(
       p,
-      "Pedidos registrados del mes",
+      "Pedidos reales del mes",
       cantidad(m.registrados),
       "Incluye cancelados; cada pedido una vez",
     );
@@ -223,7 +227,7 @@ const Dashboard = (() => {
       ]),
     );
     recuentos("dash-totales", [
-      ["Pedidos registrados (todos los meses)", cantidad(t.pedidos)],
+      ["Pedidos reales (todos los meses)", cantidad(t.pedidos)],
       ["Pedidos vigentes (todos los meses)", cantidad(t.vigentes)],
       ["Pedidos cancelados (todos los meses)", cantidad(t.cancelados)],
       ["Pendientes actuales", cantidad(t.pendientes)],

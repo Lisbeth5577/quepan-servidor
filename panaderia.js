@@ -355,6 +355,7 @@ const cols = {
     ["Activo", (x) => (x.activo ? "Sí" : "No")],
   ],
   pedidos: [
+    ["Registro", (x) => (x.esPrueba === true ? "Prueba" : "Real")],
     ["Pedido", numero],
     ["Sucursal", (x) => x.sucursalNombre || nombre("sucursales", x.sucursalId)],
     ["Origen", (x) => x.origenNombre || "Producción central"],
@@ -849,6 +850,19 @@ function formulario(a, x = null) {
       x?.comentarios || "",
     );
     c.required = false;
+    if (gerente()) {
+      const label = nodo("label", undefined, $("campos"));
+      label.className = "check-prueba";
+      const check = nodo("input", undefined, label);
+      check.type = "checkbox";
+      check.id = "pedido-prueba";
+      check.checked = x?.esPrueba === true;
+      nodo(
+        "span",
+        "Pedido de prueba (no se incluye en el dashboard real)",
+        label,
+      );
+    }
     $("agregar").hidden = false;
     (x?.detalles || [{}]).forEach(detalle);
   }
@@ -1071,6 +1085,8 @@ $("registro").onsubmit = async (e) => {
       a.origenId = origen();
       a.fechaEntrega = v("fecha");
       a.comentarios = v("comentarios");
+      if (gerente() && $("pedido-prueba"))
+        a.esPrueba = $("pedido-prueba").checked;
       a.detalles = [...$("detalles").children].map((row) => ({
         productoId: row.querySelector("select").value,
         cantidad: Number(row.querySelector("input").value),

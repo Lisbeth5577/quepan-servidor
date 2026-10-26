@@ -239,8 +239,18 @@ function crearNegocio(db) {
             vendedorUid = v.id;
           }
         }
+        const esPrueba =
+          a.esPrueba === undefined ? antes?.esPrueba === true : a.esPrueba;
+        d.exigir(
+          typeof esPrueba === "boolean",
+          "Clasificación de pedido no válida",
+          "invalid-argument",
+        );
+        if (a.esPrueba !== undefined && esPrueba !== (antes?.esPrueba === true))
+          gerente();
         despues = {
           ...(antes || {}),
+          esPrueba,
           numero,
           sucursalId: branch,
           sucursalNombre: s.nombre,
