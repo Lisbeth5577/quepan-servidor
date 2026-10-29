@@ -1,5 +1,6 @@
 "use strict";
 // Resumen de solo lectura. No suma versiones del historial ni inventa importes de ventas.
+const dinero = require("./precios.cjs");
 const d = require("./domain"),
   { todos } = require("./consultas.cjs");
 const formato = new Intl.DateTimeFormat("en-CA", {
@@ -70,7 +71,8 @@ function resumir(datos, mes) {
     (x) => x.estado === "FINALIZADA" && dentro(x.creado),
   );
   const ventas = salidas.filter(
-    (x) => x.tipo === "ventaSucursal" && dentro(x.creado),
+    (x) =>
+      x.tipo === "ventaSucursal" && x.esPrueba !== true && dentro(x.creado),
   );
   const lineas = (pedidos) =>
     pedidos.flatMap((p) =>
@@ -206,6 +208,17 @@ function resumir(datos, mes) {
         lineas(pedidosPrueba.filter((x) => dentro(x.creado))),
       ),
       nota: "Pedidos marcados como prueba excluidos del resumen real; sus registros e inventario se conservan.",
+    },
+    finanzas: {
+      moneda: "GTQ",
+      sucursales: dinero.resumenSucursales({
+        sucursales,
+        pedidos: vigentes,
+        entregas,
+        salidas,
+        mes,
+        dia,
+      }),
     },
     mesResumen: {
       registrados: delMes.length,

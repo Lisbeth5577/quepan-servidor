@@ -125,6 +125,8 @@ async function consultar(db, uid, modulo) {
   const safe = {
     usuarios: ["nombre", "rol", "sucursalId", "activo"],
     productos: [
+      "precioVenta",
+      "moneda",
       "codigo",
       "nombre",
       "descripcion",

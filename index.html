@@ -10,35 +10,18 @@
     <script src="/web/dashboard-ui.js" defer></script>
   </head>
   <body>
-    <header class="topbar">
-      <a class="brand" href="/web/"
-        ><span class="seal">QP</span
-        ><span>Panadería San Carlos<strong>QUE PAN</strong></span></a
-      ><span class="tagline">Hecho con cariño. Compartido con orden.</span
-      ><a href="/" class="app-link">Nuestra app Android ↗</a>
+    <!-- Encabezado sencillo. No necesita bibliotecas de diseño. -->
+    <header>
+      <h1>Panadería San Carlos QUE PAN</h1>
+      <p>Sistema de pedidos, producción e inventario</p>
+      <p><a href="/">Descargar aplicación Android</a></p>
     </header>
-    <section class="hero">
-      <div>
-        <p class="eyebrow">EL PAN DE CADA DÍA, MEJOR ORGANIZADO</p>
-        <h1>Tradición en cada pan.<br />Orden en cada entrega.</h1>
-        <p>Producción, sucursales y pedidos en un solo lugar.</p>
-        <span class="hero-chip">San Carlos · QUE PAN</span>
-      </div>
-    </section>
     <main>
       <section id="acceso" class="login-card">
-        <div>
-          <p class="eyebrow">BIENVENIDO A QUE PAN</p>
-          <h2>Tu panadería, conectada.</h2>
-          <p>
-            Ingresa para consultar disponibilidad, preparar pedidos y acompañar
-            cada entrega.
-          </p>
-          <p class="nota">
-            La primera conexión puede tardar un momento si el servidor está en
-            reposo.
-          </p>
-        </div>
+        <h2>Iniciar sesión</h2>
+        <p>Ingresa con tu correo y contraseña.</p>
+        <p>Si el servidor está en reposo, la primera conexión puede tardar.</p>
+        <!-- Los identificadores permiten encontrar los campos desde JavaScript. -->
         <form id="login">
           <label
             >Correo<input
@@ -55,7 +38,7 @@
               required
               autocomplete="current-password"
               placeholder="Tu contraseña" /></label
-          ><button type="submit">Entrar a mi cuenta →</button>
+          ><button type="submit">Entrar</button>
         </form>
       </section>
       <p id="mensaje" role="status" aria-live="polite">
@@ -74,11 +57,11 @@
           </div>
         </div>
         <div class="workspace">
+          <!-- JavaScript agrega los botones según el rol del usuario. -->
           <nav id="modulos" aria-label="Secciones"></nav>
           <div class="content">
             <div class="section-head">
               <div>
-                <p class="eyebrow">EL DÍA EN TU PANADERÍA</p>
                 <h2 id="titulo">Productos</h2>
               </div>
               <div>
@@ -94,8 +77,7 @@
             >
               <div class="card dash-intro">
                 <div>
-                  <p class="eyebrow">PANORAMA DE TU PANADERÍA</p>
-                  <h3>Todo el sistema, en un solo lugar</h3>
+                  <h3>Resumen del mes</h3>
                   <p>
                     Elige un mes para revisar la demanda y las entregas. Las
                     existencias muestran el saldo actual.
@@ -112,6 +94,19 @@
               </div>
               <p id="dash-actualizado" class="nota" role="status"></p>
               <p id="dash-pruebas" class="nota"></p>
+              <section>
+                <h3>Ingresos por sucursal del mes</h3>
+                <p>
+                  Quetzales. Solo ventas registradas. Pedidos y entregas no son
+                  ingresos.
+                </p>
+                <p id="dash-ingresos"></p>
+                <div id="dash-finanzas" class="table-wrap"></div>
+                <p>
+                  Los importes pendientes y las salidas antiguas sin clasificar
+                  no se cuentan como ingresos de cero.
+                </p>
+              </section>
               <div id="dash-cifras" class="dash-cifras"></div>
               <div id="dash-cantidades" class="dash-cifras"></div>
               <div class="dash-doble">
@@ -207,8 +202,9 @@
               <form id="registro">
                 <div id="campos" class="fields"></div>
                 <div id="detalles" class="detail-list"></div>
+                <p id="total-pedido" hidden></p>
                 <button type="button" id="agregar" class="secondary">
-                  + Agregar línea
+                  Agregar producto o ingrediente
                 </button>
                 <div class="form-actions">
                   <button type="submit">Guardar cambios</button
@@ -219,7 +215,7 @@
               </form>
             </section>
             <section id="reporte" class="card" hidden>
-              <h3>Un listado claro para cada día</h3>
+              <h3>Descargar reporte diario</h3>
               <p>
                 Archivo Excel (.xlsx), una fila por producto. Fecha, hora y
                 cantidades en columnas independientes. O = operada; C =
@@ -261,9 +257,10 @@
                     </select></label
                   >
                 </div>
-                <button type="submit">Descargar Excel (.xlsx) ↓</button>
+                <button type="submit">Descargar Excel (.xlsx)</button>
               </form>
             </section>
+            <!-- Aquí se muestran las filas que devuelve el servidor. -->
             <section id="tabla">
               <div class="filters">
                 <label
@@ -304,8 +301,6 @@
         </div>
       </div>
     </main>
-    <footer>
-      Panadería San Carlos «QUE PAN» · Producción y distribución con cariño.
-    </footer>
+    <footer>Panadería San Carlos QUE PAN</footer>
   </body>
 </html>

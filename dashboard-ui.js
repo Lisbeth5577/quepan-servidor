@@ -8,22 +8,26 @@ const Dashboard = (() => {
     xs?.length
       ? xs.map((x) => cantidad(x.cantidad) + " " + x.unidad).join(" · ")
       : "Sin movimientos";
-  function tarjeta(p, t, v, nota = "") {
-    const c = nodo("article", undefined, p);
-    c.className = "dash-cifra";
-    nodo("span", t, c);
-    nodo("strong", String(v), c);
-    if (nota) nodo("small", nota, c);
+  // Cada indicador es una fila de una tabla: concepto, valor y aclaración.
+  function filaResumen(p, titulo, valor, nota = "") {
+    let tabla = p.querySelector("table");
+    if (!tabla) {
+      tabla = nodo("table", undefined, p);
+      const encabezado = nodo("tr", undefined, nodo("thead", undefined, tabla));
+      nodo("th", "Concepto", encabezado);
+      nodo("th", "Valor", encabezado);
+      nodo("th", "Detalle", encabezado);
+      nodo("tbody", undefined, tabla);
+    }
+    const fila = nodo("tr", undefined, tabla.querySelector("tbody"));
+    nodo("td", titulo, fila);
+    nodo("td", String(valor), fila);
+    nodo("td", nota, fila);
   }
   function recuentos(id, lista) {
-    const p = $(id);
-    p.replaceChildren();
-    for (const [t, v] of lista) {
-      const d = nodo("div", undefined, p);
-      d.className = "dash-recuento";
-      nodo("span", t, d);
-      nodo("strong", String(v), d);
-    }
+    const contenedor = $(id);
+    contenedor.replaceChildren();
+    for (const item of lista) filaResumen(contenedor, item[0], item[1]);
   }
   function tabla(id, cols, filas) {
     const p = $(id);
@@ -56,6 +60,8 @@ const Dashboard = (() => {
       // No mostrar cifras del mes anterior mientras responde el nuevo.
       [
         "dash-pruebas",
+        "dash-finanzas",
+        "dash-ingresos",
         "dash-cifras",
         "dash-cantidades",
         "dash-top",
@@ -83,6 +89,8 @@ const Dashboard = (() => {
           ". No uses las cifras anteriores como datos de este mes.";
         [
           "dash-pruebas",
+          "dash-finanzas",
+          "dash-ingresos",
           "dash-cifras",
           "dash-cantidades",
           "dash-top",
@@ -101,38 +109,76 @@ const Dashboard = (() => {
     }
   }
   function pintar(x) {
+    const filas = x.finanzas?.sucursales || [];
+    const formatoQ = (centavos) =>
+      centavos == null ? "Pendiente" : "Q " + (centavos / 100).toFixed(2);
+    const parcial = (valor) =>
+      valor.preciosPendientes
+        ? formatoQ(valor.subtotalConocidoCentavos) +
+          " conocidos; " +
+          valor.preciosPendientes +
+          " sin precio"
+        : formatoQ(valor.totalCentavos);
+    const ingreso = filas.reduce(
+      (s, f) => s + f.ventas.subtotalConocidoCentavos,
+      0,
+    );
+    const pendientes = filas.reduce(
+      (s, f) => s + f.ventas.preciosPendientes + f.ventasSinClasificar,
+      0,
+    );
+    $("dash-ingresos").textContent =
+      "Ingresos registrados con precio: " +
+      formatoQ(ingreso) +
+      ". Registros de venta o salida pendientes: " +
+      pendientes +
+      ". No es utilidad ni confirmación de cobros.";
+    tabla(
+      "dash-finanzas",
+      [
+        ["Sucursal", (f) => f.nombre],
+        ["Total pedidos vigentes", (f) => parcial(f.pedidos)],
+        ["Total entregas", (f) => parcial(f.entregas)],
+        ["Ingresos por ventas", (f) => parcial(f.ventas)],
+        ["Ventas registradas", (f) => f.numeroVentas],
+        ["Salidas antiguas sin clasificar", (f) => f.ventasSinClasificar],
+        ["Salidas sin venta", (f) => f.salidasSinVenta],
+      ],
+      filas,
+    );
+
     $("dash-pruebas").textContent =
       `Resumen de pedidos reales. Se excluyen ${x.pruebasExcluidas?.pedidosMes || 0} pedidos de prueba en este mes (${unidades(x.pruebasExcluidas?.cantidadesMes)}). Las pruebas se conservan en pedidos e historial. Las existencias siguen mostrando los saldos registrados; esta clasificación no corrige el inventario físico.`;
     const m = x.mesResumen,
       t = x.total,
       p = $("dash-cifras");
     p.replaceChildren();
-    tarjeta(
+    filaResumen(
       p,
       "Pedidos reales del mes",
       cantidad(m.registrados),
       "Incluye cancelados; cada pedido una vez",
     );
-    tarjeta(
+    filaResumen(
       p,
       "Pedidos vigentes del mes",
       cantidad(m.vigentes),
       "Excluye cancelados",
     );
-    tarjeta(
+    filaResumen(
       p,
       "Pedidos cancelados del mes",
       cantidad(m.cancelados),
       "Creados en el mes y actualmente cancelados",
     );
-    tarjeta(
+    filaResumen(
       p,
       "Entregas confirmadas en el mes",
       cantidad(m.entregas),
       "Según fecha real de confirmación",
     );
-    tarjeta(p, "Lotes producidos en el mes", cantidad(m.lotes));
-    tarjeta(
+    filaResumen(p, "Lotes producidos en el mes", cantidad(m.lotes));
+    filaResumen(
       p,
       "Ventas / salidas en el mes",
       cantidad(m.ventasSalidas),
@@ -140,15 +186,15 @@ const Dashboard = (() => {
     );
     const q = $("dash-cantidades");
     q.replaceChildren();
-    tarjeta(
+    filaResumen(
       q,
       "Cantidad solicitada del mes",
       unidades(m.solicitado),
       "Pedidos vigentes, por unidad",
     );
-    tarjeta(q, "Cantidad entregada del mes", unidades(m.entregado));
-    tarjeta(q, "Cantidad producida del mes", unidades(m.producido));
-    tarjeta(q, "Cantidad vendida / retirada", unidades(m.vendido));
+    filaResumen(q, "Cantidad entregada del mes", unidades(m.entregado));
+    filaResumen(q, "Cantidad producida del mes", unidades(m.producido));
+    filaResumen(q, "Cantidad vendida / retirada", unidades(m.vendido));
     const top = $("dash-top");
     top.replaceChildren();
     if (x.ranking.length) {
@@ -193,24 +239,15 @@ const Dashboard = (() => {
     );
     const dias = $("dash-dias");
     dias.replaceChildren();
-    const max = Math.max(1, ...x.dias.map((a) => a.vigentes));
-    const diasConActividad = x.dias.filter((a) => a.vigentes > 0);
-    if (!diasConActividad.length)
-      nodo("p", "Sin pedidos vigentes en este mes.", dias).className = "nota";
-    for (const a of diasConActividad) {
-      const f = nodo("div", undefined, dias);
-      f.className = "dash-barra";
-      nodo("span", a.dia.slice(8), f);
-      const meter = nodo("meter", undefined, f);
-      meter.min = 0;
-      meter.max = max;
-      meter.value = a.vigentes;
-      meter.setAttribute(
-        "aria-label",
-        a.dia + ": " + a.vigentes + " pedidos vigentes",
-      );
-      nodo("strong", String(a.vigentes), f);
-    }
+    // La actividad diaria se presenta como tabla, sin barras gráficas.
+    tabla(
+      "dash-dias",
+      [
+        ["Fecha", (fila) => fila.dia],
+        ["Pedidos", (fila) => cantidad(fila.vigentes)],
+      ],
+      x.dias.filter((fila) => fila.vigentes > 0),
+    );
     const etiquetas = {
       PENDIENTE: "Pendientes",
       EN_RUTA: "En ruta",
@@ -239,10 +276,10 @@ const Dashboard = (() => {
     ]);
     const inv = $("dash-inventario");
     inv.replaceChildren();
-    tarjeta(inv, "Terminado en producción", unidades(t.stockProduccion));
-    tarjeta(inv, "Reservado en producción", unidades(t.reservado));
-    tarjeta(inv, "Disponible en producción", unidades(t.disponible));
-    tarjeta(
+    filaResumen(inv, "Terminado en producción", unidades(t.stockProduccion));
+    filaResumen(inv, "Reservado en producción", unidades(t.reservado));
+    filaResumen(inv, "Disponible en producción", unidades(t.disponible));
+    filaResumen(
       inv,
       "Terminado en sucursales",
       unidades(t.stockSucursales),

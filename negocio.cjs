@@ -1,6 +1,7 @@
 "use strict";
 // Cada solicitud se confirma con sus reservas, inventario e historial en una transacción.
 const d = require("./domain");
+const dinero = require("./precios.cjs");
 const { FieldValue } = require("firebase-admin/firestore");
 const crypto = require("node:crypto");
 const stamp = () => FieldValue.serverTimestamp();
@@ -169,14 +170,23 @@ function crearNegocio(db) {
           poner(s.c, s.id, { reservado, actualizado: stamp() }),
         );
       }
-      async function detallesConNombre(rows) {
+      async function detallesConNombre(rows, anteriores = []) {
         const lines = d.detalles(rows),
           out = [];
         for (const l of lines) {
           const p = await leer("productos", l.productoId);
           d.exigir(p?.activo, "Producto inactivo");
+          const previo = anteriores.find(
+            (fila) => fila.productoId === l.productoId,
+          );
+          // En una edición se conserva el precio original, incluso si estaba pendiente.
+          const precioUnitarioCentavos = previo
+            ? (previo.precioUnitarioCentavos ?? null)
+            : dinero.precio(p.precioVenta);
           out.push({
             ...l,
+            precioUnitarioCentavos,
+            importeCentavos: dinero.importe(l.cantidad, precioUnitarioCentavos),
             codigo: p.codigo || p.id,
             nombre: p.nombre,
             unidad: p.unidad || "UND",
@@ -208,7 +218,10 @@ function crearNegocio(db) {
           origen === "PRODUCCION"
             ? { nombre: "Producción central" }
             : await sucursalActiva(d.id(origen));
-        const lines = await detallesConNombre(a.detalles),
+        const lines = await detallesConNombre(
+            a.detalles,
+            antes?.detalles || [],
+          ),
           date = fecha(a.fechaEntrega),
           comentarios = opcional(a.comentarios);
         if (antes)
@@ -261,6 +274,7 @@ function crearNegocio(db) {
           fechaEntrega: date,
           comentarios,
           detalles: lines,
+          ...dinero.sumar(lines),
           estado: "PENDIENTE",
           status: "O",
           reservaAplicada: true,
@@ -446,7 +460,41 @@ function crearNegocio(db) {
           minimo: 1,
           actualizado: stamp(),
         });
+        const tipoMovimiento =
+          action === "ventaSucursal" ? a.tipoMovimiento || "venta" : "conteo";
+        d.exigir(
+          ["venta", "salida", "conteo"].includes(tipoMovimiento),
+          "Tipo de movimiento no válido",
+          "invalid-argument",
+        );
+        d.exigir(
+          action !== "ventaSucursal" || tipoMovimiento !== "conteo",
+          "Usa la opción de conteo físico",
+        );
+        const precioUnitarioCentavos =
+          tipoMovimiento === "venta" ? dinero.precio(p.precioVenta) : null;
+        if (tipoMovimiento === "venta")
+          d.exigir(
+            precioUnitarioCentavos !== null,
+            "El gerente debe registrar el precio de venta del producto antes de vender",
+          );
+        if (a.esPrueba !== undefined) {
+          d.exigir(
+            typeof a.esPrueba === "boolean",
+            "Clasificación no válida",
+            "invalid-argument",
+          );
+          if (a.esPrueba) gerente();
+        }
         crear("salidas_sucursales", key, {
+          moneda: "GTQ",
+          tipoMovimiento,
+          esPrueba: a.esPrueba === true,
+          precioUnitarioCentavos,
+          importeCentavos:
+            tipoMovimiento === "venta"
+              ? dinero.importe(a.cantidad, precioUnitarioCentavos)
+              : null,
           sucursalId: branch,
           productoId: pid,
           cantidad:
@@ -623,6 +671,14 @@ function crearNegocio(db) {
             activo: x.activo !== false,
             actualizado: stamp(),
           };
+          const campoPrecio =
+            c === "productos" ? "precioVenta" : "costoUnitario";
+          const precioCentavos = dinero.precio(
+            x[campoPrecio] === undefined ? prev?.[campoPrecio] : x[campoPrecio],
+          );
+          value[campoPrecio] =
+            precioCentavos === null ? null : precioCentavos / 100;
+          value.moneda = "GTQ";
           if (!prev)
             Object.assign(value, {
               existencia: 0,
@@ -661,6 +717,12 @@ function crearNegocio(db) {
           ingredienteId: id,
           cantidad: amount,
           usuarioUid: uid,
+          costoUnitarioCentavos: dinero.precio(s.costoUnitario),
+          importeCentavos: dinero.importe(
+            amount,
+            dinero.precio(s.costoUnitario),
+          ),
+          moneda: "GTQ",
           creado: stamp(),
         });
         result = { id: key, mensaje: "Entrada registrada" };
@@ -685,6 +747,11 @@ function crearNegocio(db) {
             nombre: i.nombre,
             unidad: i.unidad || "",
             anterior: i.existencia,
+            costoUnitarioCentavos: dinero.precio(i.costoUnitario),
+            importeCentavos: dinero.importe(
+              l.cantidad,
+              dinero.precio(i.costoUnitario),
+            ),
             posterior,
           });
           changes.push([i.id, posterior]);
@@ -699,6 +766,7 @@ function crearNegocio(db) {
           productoId: id,
           cantidad: amount,
           consumos: items,
+          costo: dinero.sumar(items),
           existenciaAnterior: p.existencia,
           existenciaPosterior: total,
           productoNombre: p.nombre,

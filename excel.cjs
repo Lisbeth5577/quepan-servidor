@@ -74,7 +74,7 @@ function letra(col) {
 }
 const widths = [
   14, 12, 19, 34, 26, 20, 30, 18, 18, 18, 19, 15, 30, 14, 19, 20, 34, 28, 20,
-  60, 26, 40,
+  60, 26, 40, 23, 23, 12, 23, 30,
 ];
 function celda(v, col, row) {
   const r = letra(col) + row;
@@ -88,7 +88,7 @@ function celda(v, col, row) {
     return `<c r="${r}" s="3"><v>${(h * 3600 + m * 60 + s) / 86400}</v></c>`;
   }
   if (typeof v === "number" && Number.isFinite(v))
-    return `<c r="${r}" s="${Number.isInteger(v) ? 7 : 4}"><v>${v}</v></c>`;
+    return `<c r="${r}" s="${col === 22 || col === 23 ? 4 : Number.isInteger(v) ? 7 : 4}"><v>${v}</v></c>`;
   return `<c r="${r}" s="${col === 13 && v === "C" ? 5 : row % 2 === 0 ? 6 : 0}" t="inlineStr"><is><t xml:space="preserve">${xml(v)}</t></is></c>`;
 }
 async function crearExcel(reporte) {

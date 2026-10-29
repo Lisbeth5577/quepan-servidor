@@ -79,6 +79,11 @@ const TITULOS = [
   "Comentarios",
   "Usuario que operó",
   "Identificador de auditoría",
+  "Precio o costo unitario Q",
+  "Importe de la línea Q",
+  "Moneda",
+  "Tipo de salida",
+  "Registro real o prueba",
 ];
 async function generarReporte(db, uid, fecha, tipo = "todo") {
   d.exigir(uid, "Inicia sesión", "unauthenticated");
@@ -148,6 +153,17 @@ async function generarReporte(db, uid, fecha, tipo = "todo") {
       e.comentarios ?? p.comentarios ?? "",
       usuarios.get(e.uid)?.nombre || "",
       e.audit || "",
+      (l.precioUnitarioCentavos ?? l.costoUnitarioCentavos) == null
+        ? "Pendiente"
+        : (l.precioUnitarioCentavos ?? l.costoUnitarioCentavos) / 100,
+      l.importeCentavos == null
+        ? "Pendiente o no aplica"
+        : l.importeCentavos / 100,
+      "GTQ",
+      l.tipoMovimiento || "",
+      p.esPrueba === true || l.esPrueba === true
+        ? "Prueba"
+        : "Real o histórico sin clasificar",
     ];
     rows.push({ cat, row });
   }

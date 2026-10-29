@@ -33,6 +33,17 @@ const nombres = {
   alertas: "Alertas de producción",
   notificaciones: "Notificaciones",
 };
+// null es precio pendiente. Se muestran quetzales sin confundir vacío con cero.
+function quetzales(centavos) {
+  return centavos == null
+    ? "Pendiente de precio"
+    : "Q " + (centavos / 100).toFixed(2);
+}
+function precioCatalogo(valor) {
+  return valor == null
+    ? "Pendiente de precio"
+    : quetzales(Math.round(valor * 100));
+}
 const gerente = () => perfil?.rol === "GERENTE";
 const hoy = () =>
   new Intl.DateTimeFormat("en-CA", {
@@ -45,6 +56,7 @@ function mensaje(s, error = false) {
   $("mensaje").textContent = s;
   $("mensaje").className = error ? "error" : "exito";
 }
+// Crea un elemento HTML y escribe texto sin interpretarlo como código.
 function nodo(tag, texto, parent) {
   const e = document.createElement(tag);
   if (texto !== undefined) e.textContent = texto;
@@ -93,6 +105,7 @@ async function token() {
   }
   return sesion.id;
 }
+// Envía una consulta al servidor con la credencial de la sesión.
 async function api(url, opts = {}) {
   const r = await fetch(url, {
     ...opts,
@@ -107,6 +120,7 @@ async function api(url, opts = {}) {
   }
   return x;
 }
+// Al enviar el formulario de acceso se comprueba la cuenta.
 $("login").onsubmit = async (e) => {
   e.preventDefault();
   if (ocupado) return;
@@ -276,6 +290,7 @@ const ayudas = {
   salidas_sucursales:
     "Cada venta o conteo conserva quién lo registró, el motivo y la existencia resultante.",
 };
+// Cambia la sección visible y pide sus datos al servidor.
 async function abrir(m) {
   modulo = m;
   datos = [];
@@ -326,10 +341,12 @@ async function abrir(m) {
     mensaje(e.message, true);
   }
 }
+// Encabezados y valores que se mostrarán en cada tabla.
 const cols = {
   productos: [
     ["Código", (x) => x.codigo],
     ["Producto", (x) => x.nombre],
+    ["Precio de venta", (x) => precioCatalogo(x.precioVenta)],
     ["Existencia", (x) => x.existencia],
     ["Reservado", (x) => x.reservado || 0],
     ["Disponible", (x) => x.disponible],
@@ -339,6 +356,7 @@ const cols = {
   ingredientes: [
     ["Código", (x) => x.codigo],
     ["Ingrediente", (x) => x.nombre],
+    ["Costo por unidad de medida", (x) => precioCatalogo(x.costoUnitario)],
     ["Existencia", (x) => x.existencia],
     ["Unidad", (x) => x.unidad],
     ["Mínimo", (x) => x.minimo],
@@ -357,6 +375,7 @@ const cols = {
   pedidos: [
     ["Registro", (x) => (x.esPrueba === true ? "Prueba" : "Real")],
     ["Pedido", numero],
+    ["Total del pedido", (x) => quetzales(x.totalCentavos)],
     ["Sucursal", (x) => x.sucursalNombre || nombre("sucursales", x.sucursalId)],
     ["Origen", (x) => x.origenNombre || "Producción central"],
     ["Recibir el", (x) => x.fechaEntrega],
@@ -399,6 +418,14 @@ const cols = {
     ],
     ["Cantidad", (x) => x.cantidad],
     ["Existencia final", (x) => x.existencia],
+    ["Movimiento", (x) => x.tipoMovimiento || "Antiguo sin clasificar"],
+    [
+      "Importe de venta",
+      (x) =>
+        x.tipoMovimiento === "salida" || x.tipo === "ajustarSucursal"
+          ? "No es venta"
+          : quetzales(x.importeCentavos),
+    ],
     ["Motivo", (x) => x.motivo],
   ],
   recetas: [
@@ -420,6 +447,7 @@ const cols = {
     ["Producto", (x) => nombre("productos", x.productoId)],
     ["Cantidad", (x) => x.cantidad],
     ["Estado", (x) => x.estado],
+    ["Costo de materia prima", (x) => quetzales(x.costo?.totalCentavos)],
   ],
   movimientos: [
     ["Fecha", (x) => hora(x.creado)],
@@ -512,6 +540,7 @@ function prepararFiltros() {
   if (modulo === "inventario_sucursales" && !gerente())
     $("f-sucursal").value = perfil.sucursalId;
 }
+// Recorre los datos y construye las filas de la tabla.
 function pintar() {
   const cs = cols[modulo];
   if (!cs) return;
@@ -728,7 +757,15 @@ function detalle(l = {}) {
   q.setAttribute("aria-label", "Cantidad");
   if (l.productoId || l.ingredienteId)
     sel.value = l.productoId || l.ingredienteId;
-  boton("Quitar", () => row.remove(), row, "secondary");
+  boton(
+    "Quitar",
+    () => {
+      row.remove();
+      vistaTotalPedido();
+    },
+    row,
+    "secondary",
+  );
   nodo("small", "", row);
   sel.onchange = actualizarLimites;
   actualizarLimites();
@@ -760,14 +797,18 @@ function actualizarLimites() {
       n > 0
         ? "Disponible para reservar: " + n + " unidades."
         : "Sin unidades disponibles. No se puede agregar este artículo.";
-    q.oninput = () =>
+    q.oninput = () => {
       q.setCustomValidity(
         Number(q.value) > disponible(sel.value)
           ? "La cantidad supera el stock disponible."
           : "",
       );
+      vistaTotalPedido();
+    };
   }
+  vistaTotalPedido();
 }
+// Prepara los campos del formulario para la acción seleccionada.
 function formulario(a, x = null) {
   if (ocupado || pendiente) {
     mensaje("Completa la solicitud pendiente antes de iniciar otra.", true);
@@ -783,6 +824,7 @@ function formulario(a, x = null) {
   $("detalles").replaceChildren();
   $("captura").hidden = false;
   $("agregar").hidden = true;
+  $("total-pedido").hidden = true;
   const titles = {
     crearPedido: "Nuevo pedido",
     modificarPedido: "Modificar pedido",
@@ -927,6 +969,25 @@ function formulario(a, x = null) {
   if (a === "incidencia") campo("problema", "Describe el problema", "textarea");
   if (["ventaSucursal", "ajustarSucursal"].includes(a)) {
     nodo("p", x.sucursalNombre + " · " + x.productoNombre, $("campos"));
+    if (a === "ventaSucursal") {
+      campo("tipo-movimiento", "Tipo de movimiento", "text", [
+        { id: "venta", nombre: "Venta (genera ingreso)" },
+        { id: "salida", nombre: "Salida sin venta (merma, consumo u otro)" },
+      ]);
+      const producto = catalogos.productos.find((p) => p.id === x.productoId);
+      nodo(
+        "p",
+        "Precio por unidad: " + precioCatalogo(producto?.precioVenta),
+        $("campos"),
+      );
+      if (gerente()) {
+        const label = nodo("label", undefined, $("campos"));
+        const check = nodo("input", undefined, label);
+        check.type = "checkbox";
+        check.id = "venta-prueba";
+        nodo("span", "Movimiento de prueba (excluir de ingresos)", label);
+      }
+    }
     const q = campo(
       "cantidad",
       a === "ventaSucursal"
@@ -1015,6 +1076,23 @@ function formulario(a, x = null) {
           x?.minimo ?? 1,
         );
         m.min = "0";
+        const esProducto = modulo === "productos";
+        const precio = campo(
+          "precio",
+          esProducto
+            ? "Precio de venta por unidad (Q)"
+            : "Costo por unidad de medida (Q)",
+          "number",
+          null,
+          (esProducto ? x?.precioVenta : x?.costoUnitario) ?? "",
+        );
+        precio.min = "0";
+        precio.required = false;
+        nodo(
+          "p",
+          "Deja vacío si todavía no conoces el precio. Cero significa gratuito. El costo se expresa en la unidad indicada, por ejemplo quetzales por kilogramo.",
+          $("campos"),
+        );
         campo(
           "descripcion",
           "Descripción (opcional)",
@@ -1030,7 +1108,7 @@ function formulario(a, x = null) {
       }
     }
   }
-  $("captura").scrollIntoView({ behavior: "smooth", block: "start" });
+  $("captura").scrollIntoView({ block: "start" });
 }
 async function enviar(a) {
   pendiente = { solicitudId: crypto.randomUUID(), ...a };
@@ -1040,6 +1118,7 @@ async function enviar(a) {
   );
   await guardar();
 }
+// Guarda la solicitud. El servidor verifica permisos y existencias.
 async function guardar() {
   if (ocupado || !pendiente) return;
   ocupado = true;
@@ -1111,6 +1190,10 @@ $("registro").onsubmit = async (e) => {
       a.sucursalId = editing.sucursalId;
       a.productoId = editing.productoId;
       a.motivo = v("motivo");
+      if (accion === "ventaSucursal") {
+        a.tipoMovimiento = v("tipo-movimiento");
+        if ($("venta-prueba")) a.esPrueba = $("venta-prueba").checked;
+      }
       a[accion === "ventaSucursal" ? "cantidad" : "existencia"] = n("cantidad");
     }
     if (accion === "guardarCatalogo") {
@@ -1134,6 +1217,9 @@ $("registro").onsubmit = async (e) => {
         a.datos.unidad = v("unidad");
         a.datos.minimo = n("minimo");
         a.datos.descripcion = v("descripcion");
+        a.datos[
+          coleccionActual === "productos" ? "precioVenta" : "costoUnitario"
+        ] = v("precio") === "" ? null : n("precio");
       }
     }
     await enviar(a);
@@ -1188,6 +1274,7 @@ $("buscar").oninput = pintar;
 for (const id of ["f-sucursal", "f-producto", "f-ruta", "f-estado"])
   $(id).onchange = pintar;
 $("reintentar").onclick = guardar;
+// Solicita al servidor el reporte Excel de la fecha seleccionada.
 $("descargar").onsubmit = async (e) => {
   e.preventDefault();
   if (ocupado) return;
@@ -1278,12 +1365,19 @@ function vistaConsumo() {
     return;
   }
   let valido = true;
+  let costoTotal = 0,
+    costosPendientes = 0;
   nodo("h4", "Consumo de materia prima", box);
   const tabla = nodo("table", undefined, box),
     head = nodo("tr", undefined, nodo("thead", undefined, tabla));
-  ["Ingrediente", "Existencia", "Consumo", "Saldo previsto"].forEach((t) =>
-    nodo("th", t, head),
-  );
+  [
+    "Ingrediente",
+    "Existencia",
+    "Consumo",
+    "Saldo previsto",
+    "Costo por unidad",
+    "Costo del consumo",
+  ].forEach((t) => nodo("th", t, head));
   const body = nodo("tbody", undefined, tabla);
   for (const l of receta.ingredientes || []) {
     const i = (catalogos.ingredientes || []).find(
@@ -1298,6 +1392,14 @@ function vistaConsumo() {
       uso > 0;
     const saldo = Math.round(((i?.existencia || 0) - uso) * 100) / 100;
     if (!i || !exacto || saldo < 0) valido = false;
+    const costoCentavos =
+      i?.costoUnitario == null ? null : Math.round(i.costoUnitario * 100);
+    const costoConsumo =
+      costoCentavos == null || !exacto
+        ? null
+        : Math.round((Math.round(uso * 100) * costoCentavos) / 100);
+    if (costoConsumo == null) costosPendientes++;
+    else costoTotal += costoConsumo;
     const tr = nodo("tr", undefined, body),
       u = i?.unidad || "";
     [
@@ -1305,8 +1407,20 @@ function vistaConsumo() {
       (i?.existencia || 0) + " " + u,
       exacto ? uso + " " + u : "Ajustar cantidad del lote",
       exacto ? saldo + " " + u : "—",
+      quetzales(costoCentavos),
+      quetzales(costoConsumo),
     ].forEach((t) => nodo("td", t, tr));
   }
+  nodo(
+    "p",
+    costosPendientes
+      ? "Costo parcial conocido: " +
+          quetzales(costoTotal) +
+          ". Ingredientes sin costo: " +
+          costosPendientes
+      : "Costo de materia prima del lote: " + quetzales(costoTotal),
+    box,
+  );
   const despues =
     Math.round((Number(producto.existencia || 0) + cantidad) * 100) / 100;
   if (!receta.ingredientes?.length || despues > 1000000) valido = false;
@@ -1323,4 +1437,39 @@ function vistaConsumo() {
     box,
   ).className = valido ? "nota" : "error";
   guardar.disabled = !valido;
+}
+
+// El total visible es una ayuda. El servidor calcula el importe definitivo.
+function vistaTotalPedido() {
+  const salida = $("total-pedido");
+  if (!salida || !["crearPedido", "modificarPedido"].includes(accion)) return;
+  salida.hidden = false;
+  let total = 0,
+    pendientes = 0;
+  for (const fila of $("detalles").children) {
+    const id = fila.querySelector("select").value;
+    const cantidad = Number(fila.querySelector("input").value);
+    const producto = catalogos.productos.find((p) => p.id === id);
+    const anterior = editing?.detalles?.find((l) => l.productoId === id);
+    const precio = anterior
+      ? (anterior.precioUnitarioCentavos ?? null)
+      : producto?.precioVenta == null
+        ? null
+        : Math.round(producto.precioVenta * 100);
+    if (precio == null) pendientes++;
+    else total += Math.round((Math.round(cantidad * 100) * precio) / 100);
+    const nota = fila.querySelector("small");
+    nota.textContent =
+      nota.textContent.split(" Precio:")[0] +
+      " Precio: " +
+      quetzales(precio) +
+      ".";
+  }
+  salida.textContent = pendientes
+    ? "Subtotal con precio: " +
+      quetzales(total) +
+      ". Productos sin precio: " +
+      pendientes +
+      ". Total pendiente."
+    : "Total del pedido: " + quetzales(total);
 }
