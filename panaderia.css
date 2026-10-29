@@ -66,6 +66,8 @@ button {
   color: #222;
   font: inherit;
   cursor: pointer;
+  display: block;
+  text-align: left;
 }
 button:hover {
   background: #dce8de;
@@ -88,10 +90,31 @@ textarea:focus-visible {
   max-width: 460px;
 }
 /* 3. Menú de botones y mensajes. */
+/* Dos zonas: menú a la izquierda y contenido a la derecha. */
+.workspace {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
 nav {
-  margin: 14px 0;
-  padding: 10px 0;
-  border-bottom: 1px solid #aaa;
+  width: 220px;
+  flex-shrink: 0;
+  margin: 18px 0;
+  padding: 0;
+}
+/* Cada botón ocupa una fila completa del menú. */
+nav button {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 8px;
+}
+.content {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+.session button, .section-head button, .form-actions button, td button {
+  margin: 6px 0;
 }
 nav button.activo {
   background: #49634f;
@@ -172,9 +195,9 @@ td {
 }
 .detail input,
 .detail select {
-  display: inline-block;
-  width: auto;
-  max-width: 100%;
+  display: block;
+  width: 100%;
+  max-width: 460px;
 }
 .detail input {
   width: 110px;
@@ -205,6 +228,15 @@ footer {
   th,
   td {
     padding: 6px;
+  }
+  /* En una pantalla pequeña el menú sigue vertical y alineado a la izquierda.
+     El contenido va debajo para que los formularios tengan espacio. */
+  .workspace {
+    display: block;
+  }
+  nav {
+    width: 100%;
+    max-width: 260px;
   }
   nav button {
     font-size: 14px;
