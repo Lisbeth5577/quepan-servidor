@@ -30,7 +30,7 @@ Vista previa revisada en navegador con copia restaurada: cifras y formulario de 
 No se hicieron producciones ni pedidos reales para estas pruebas.
 
 ## API para Postman
-GET https://sipropan-servidor.onrender.com/api/dashboard?mes=2026-10
+GET https://quepan-panaderia-san-carlos.onrender.com/api/dashboard?mes=2026-10
 Authorization: Bearer {{firebase_id_token}}
 Solo rol GERENTE. Sin sesión devuelve 401; vendedor 403; mes inválido 400.
 
@@ -43,3 +43,5 @@ Existen pedidos históricos con reservas superiores a su stock físico. Se conse
 
 ## Corrección del 25 de octubre: pruebas separadas
 La propietaria confirmó que todos los siete pedidos anteriores fueron pruebas. Se conservaron completos y se marcaron esPrueba=true. El resumen real debe mostrar 0 pedidos de octubre y excluir sus 221 unidades y sus entregas del ranking y gráficos. Un aviso contabiliza las pruebas excluidas. Los pedidos e historial permanecen consultables; el inventario no se reinicia ni se corrige de forma ficticia. El gerente puede marcar futuros pedidos de prueba en su formulario. La publicación de esta corrección debe comprobarse antes de darla por activa.
+
+Publicación de la corrección comprobada el 25 de octubre: sesión real Kevin, 0pedidos/0entregas reales; 7pruebas/221UND excluidas. Historial e inventario conservados.

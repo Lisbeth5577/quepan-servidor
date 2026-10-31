@@ -4,7 +4,7 @@ const fs = require("fs"),
   d = require("./domain"),
   { consultar } = require("./consultas.cjs");
 const { generarDashboard } = require("./dashboard.cjs");
-const ORIGEN = "https://sipropan-servidor.onrender.com";
+const ORIGEN = (process.env.RENDER_EXTERNAL_URL || "https://quepan-panaderia-san-carlos.onrender.com").replace(/\/$/, "");
 function conWeb(
   siguiente,
   { db, verificar, directorio = __dirname, origen = ORIGEN },

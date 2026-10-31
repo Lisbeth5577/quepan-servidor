@@ -20,8 +20,8 @@
 
 ## Cómo usarlo
 
-Web: https://sipropan-servidor.onrender.com/web/
-APK: https://sipropan-servidor.onrender.com/
+Web: https://quepan-panaderia-san-carlos.onrender.com/web/
+APK: https://quepan-panaderia-san-carlos.onrender.com/
 
 Actualiza la app existente; no la desinstales. Entra con la cuenta asignada. En Android pulsa Permitir notificaciones después de iniciar sesión. No se requiere USB. Los vendedores pueden descargar los reportes de su sucursal; el gerente ve todas.
 
@@ -62,3 +62,11 @@ No se incluyen contraseñas ni claves privadas en la entrega.
 ## Descargar Excel
 
 En Reportes diarios elige fecha y listado y pulsa Descargar Excel (.xlsx). En la web se guarda un libro Excel; queda además el enlace Guardar archivo Excel si el navegador no inicia automáticamente. En Android 2.1 elige la carpeta y confirma Guardar; después puedes pulsar Abrir para elegir Excel u otra aplicación compatible. La descarga CSV de versiones anteriores se conserva por compatibilidad.
+
+## Icono verde: versión 2.2
+Actualiza desde https://quepan-panaderia-san-carlos.onrender.com/ sin desinstalar. Cambia únicamente el icono y el número de versión; conserva cuenta y operaciones. Icono original dibujado con geometría vectorial pixel art, verde musgo y salvia con pan crema. Respaldo del icono anterior en RESPALDO_QUEPAN_2026-10-21/antes_icono_verde.zip.
+
+Versión 2.3: icono de pan con curvas suaves, sin pixel art, por preferencia actualizada de la usuaria. Descargar desde el mismo enlace y actualizar sin desinstalar.
+
+## Resumen general — actualización del 24 de octubre
+Al entrar como gerente se abre el dashboard mensual. Su guía es DASHBOARD_Y_PRODUCCION.md. Incluye pedidos, ranking, entregas, producción, existencias y alertas. Antes de confirmar una producción se muestra el consumo de ingredientes y el saldo previsto. El historial nuevo conserva saldos anteriores y posteriores. La app 2.3 comparte la web actualizada; no es necesario otro APK por este cambio.

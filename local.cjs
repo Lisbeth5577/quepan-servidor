@@ -26,7 +26,7 @@ function crearManejador(verificar, operar, reportar, origenWeb) {
       res.end(JSON.stringify(body));
     };
     if (req.method === "GET" && req.url === "/salud")
-      return responder(200, { estado: "ACTIVO", servicio: "SIPROPAN local" });
+      return responder(200, { estado: "ACTIVO", servicio: "QuePan" });
     const esReporte =
       req.method === "GET" &&
       /^\/reportes\/diario\.(csv|xlsx)\?/.test(req.url) &&
@@ -275,7 +275,7 @@ async function iniciar() {
   server.headersTimeout = 10000;
   server.listen(config.puerto, config.host, () =>
     console.log(
-      "SIPROPAN HTTPS activo en puerto " +
+      "QuePan HTTPS activo en puerto " +
         config.puerto +
         ". Firebase Spark; sin Cloud Functions.",
     ),

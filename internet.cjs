@@ -21,7 +21,7 @@ async function iniciar() {
     credencial.type !== "service_account" ||
     credencial.project_id !== "sipropan-panaderia-san-carlos"
   )
-    throw Error("Falta una cuenta de servicio propia de SIPROPAN");
+    throw Error("Falta una cuenta de servicio propia de QuePan");
   process.env.GCLOUD_PROJECT = credencial.project_id;
   const puerto = Number(process.env.PORT || 10000);
   if (!Number.isInteger(puerto) || puerto < 1 || puerto > 65535)
@@ -42,7 +42,7 @@ async function iniciar() {
       ),
     require("./web.cjs").ORIGEN,
   );
-  const archivoApk = require("node:path").join(__dirname, "QUEPAN-2.3.apk");
+  const archivoApk = require("node:path").join(__dirname, "QUEPAN-3.0.apk");
   const manejadorWeb = require("./web.cjs").conWeb(
     require("./descargas.cjs").conDescargas(operar, archivoApk),
     { db, verificar: (t) => auth.verifyIdToken(t, true) },
@@ -50,9 +50,10 @@ async function iniciar() {
   const servidor = http.createServer(manejadorWeb);
   servidor.requestTimeout = 30000;
   servidor.headersTimeout = 10000;
-  const pararAvisos = iniciarAvisos(api, db);
+  // El acceso anterior conserva la actualización, sin duplicar los emisores de avisos.
+  const pararAvisos = process.env.RENDER_EXTERNAL_HOSTNAME === "sipropan-servidor.onrender.com" ? async () => {} : iniciarAvisos(api, db);
   servidor.listen(puerto, "0.0.0.0", () =>
-    console.log("SIPROPAN listo detras del HTTPS del alojamiento."),
+    console.log("QuePan listo detras del HTTPS del alojamiento."),
   );
   const parar = async () => {
     await pararAvisos();
@@ -67,7 +68,7 @@ async function iniciar() {
 if (require.main === module)
   iniciar().catch(() => {
     console.error(
-      "No se pudo iniciar SIPROPAN. Revisar credencial privada, permisos y conexion.",
+      "No se pudo iniciar QuePan. Revisar credencial privada, permisos y conexion.",
     );
     process.exitCode = 1;
   });
