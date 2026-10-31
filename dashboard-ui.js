@@ -29,11 +29,21 @@ const Dashboard = (() => {
       ["En ruta", cantidad(t.enRuta)],
       ["Entregas del mes", cantidad(m.entregas)],
       ["Producciones registradas", cantidad(m.lotes)],
-      ["Sucursal con más pedidos", x.sucursales?.length ? x.sucursales.filter(s => s.pedidos === x.sucursales[0].pedidos).map(s => s.nombre).join(" / ") + " (" + cantidad(x.sucursales[0].pedidos) + ")" : "Sin pedidos"],
       ["Ingresos del mes", pendientes ? "Pendiente" : dinero(ingresos)]
     ]) {
       const tarjeta = nodo("div", undefined, tarjetas); tarjeta.className = "resumen-tarjeta";
       nodo("span", titulo, tarjeta); nodo("strong", valor, tarjeta);
+    }
+    const rankingSucursales = sucursales.map(s => ({
+      nombre: s.nombre,
+      pedidos: (x.sucursales || []).find(p => p.sucursalId === s.sucursalId)?.pedidos || 0
+    })).sort((a, b) => b.pedidos - a.pedidos || a.nombre.localeCompare(b.nombre, "es"));
+    const panelSucursales = nodo("div", undefined, tarjetas);
+    panelSucursales.className = "resumen-tarjeta resumen-sucursales";
+    nodo("span", "Pedidos por sucursal", panelSucursales);
+    const lista = nodo("ol", undefined, panelSucursales);
+    for (const s of rankingSucursales) {
+      nodo("li", s.nombre + ": " + cantidad(s.pedidos) + (s.pedidos === 1 ? " pedido" : " pedidos"), lista);
     }
     tabla("dash-finanzas", [
       ["Sucursal", (f) => f.nombre],
