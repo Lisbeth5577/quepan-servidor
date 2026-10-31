@@ -49,8 +49,7 @@ async function consultar(db, uid, modulo) {
   const gerente = u.rol === "GERENTE";
   const repartidor = u.rol === "REPARTIDOR";
   d.exigir(
-    !repartidor ||
-      ["pedidos", "incidencias", "productos", "sucursales"].includes(modulo),
+    !repartidor || ["pedidos", "incidencias"].includes(modulo),
     "El repartidor solo consulta sus entregas",
     "permission-denied",
   );
@@ -97,6 +96,47 @@ async function consultar(db, uid, modulo) {
         x.pedidoId !== "demo-ruta-20261019",
     );
     if (!gerente) rows = rows.filter((x) => x.vendedorUid === uid);
+  }
+  if (repartidor) {
+    const sucursales = new Map(
+      (await todos(db, "sucursales")).map((s) => [s.id, s]),
+    );
+    const pedidos =
+      modulo === "incidencias"
+        ? new Map((await todos(db, "pedidos")).map((p) => [p.id, p]))
+        : null;
+    rows = rows.map((x) => {
+      const p = pedidos ? pedidos.get(x.pedidoId) || {} : x;
+      const s = sucursales.get(p.sucursalId) || {};
+      const entrega = {
+        sucursalId: p.sucursalId,
+        sucursalNombre: s.nombre || p.sucursalNombre,
+        direccionEntrega: s.direccion || "Pendiente de registrar",
+      };
+      if (pedidos) return { ...x, ...entrega };
+      return {
+        id: x.id,
+        numero: x.numero,
+        estado: x.estado,
+        fechaEntrega: x.fechaEntrega,
+        ...entrega,
+        origenNombre: x.origenNombre || "Producción central",
+        ruta: x.ruta,
+        unidad: x.unidad,
+        comentarios: x.comentarios,
+        repartidorUid: x.repartidorUid,
+        repartidorNombre: x.repartidorNombre,
+        detalles: (x.detalles || []).map((l) => ({
+          productoId: l.productoId,
+          codigo: l.codigo,
+          nombre: l.nombre,
+          cantidad: l.cantidad,
+          unidad: l.unidad,
+        })),
+        despachado: x.despachado,
+        entregado: x.entregado,
+      };
+    });
   }
   if (modulo === "salidas_sucursales" && !gerente)
     rows = rows.filter((x) => x.sucursalId === u.sucursalId);

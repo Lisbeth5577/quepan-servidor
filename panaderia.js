@@ -48,6 +48,13 @@ function precioCatalogo(valor) {
 }
 const gerente = () => perfil?.rol === "GERENTE";
 const repartidor = () => perfil?.rol === "REPARTIDOR";
+const tituloModulo = (m) =>
+  repartidor()
+    ? {
+        pedidos: "Mis entregas asignadas",
+        incidencias: "Mis incidencias de ruta",
+      }[m] || nombres[m]
+    : nombres[m];
 const hoy = () =>
   new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Guatemala",
@@ -163,7 +170,11 @@ $("login").onsubmit = async (e) => {
     $("usuario").textContent =
       perfil.nombre +
       " · " +
-      (gerente() ? "Gerente" : nombre("sucursales", perfil.sucursalId));
+      (gerente()
+        ? "Gerente"
+        : repartidor()
+          ? "Repartidor"
+          : nombre("sucursales", perfil.sucursalId));
     $("acceso").hidden = true;
     document.body.classList.remove("login-abierto");
     $("aplicacion").hidden = false;
@@ -185,7 +196,7 @@ $("login").onsubmit = async (e) => {
               "reportes",
             ].includes(m))
       )
-        boton(s, () => abrir(m), $("modulos"));
+        boton(tituloModulo(m), () => abrir(m), $("modulos"));
     $("avisos").hidden = !window.QuePanAndroid;
     await cargarCatalogos();
     await abrir(
@@ -216,6 +227,10 @@ $("salir").onclick = () => {
   mensaje("Sesión cerrada.");
 };
 async function cargarCatalogos() {
+  if (repartidor()) {
+    catalogos = {};
+    return;
+  }
   const cs = [
     "productos",
     "sucursales",
@@ -293,7 +308,7 @@ async function abrir(m) {
   for (const id of ["f-sucursal", "f-producto", "f-ruta", "f-estado"])
     $(id).value = "";
   editing = null;
-  $("titulo").textContent = nombres[m];
+  $("titulo").textContent = tituloModulo(m);
   $("ayuda").textContent = "";
   $("ayuda").hidden = true;
   $("captura").hidden = true;
@@ -303,7 +318,7 @@ async function abrir(m) {
   $("buscar").value = "";
   $("indicadores").replaceChildren();
   for (const b of $("modulos").children)
-    b.classList.toggle("activo", b.textContent === nombres[m]);
+    b.classList.toggle("activo", b.textContent === tituloModulo(m));
   const alta = {
     pedidos: "Nuevo pedido",
     solicitudes_produccion: "Solicitar producción",
@@ -502,6 +517,54 @@ const cols = {
     ["Fecha", (x) => hora(x.creado)],
   ],
 };
+const columnasReparto = {
+  pedidos: [
+    ["Pedido", numero],
+    ["Entregar en", (x) => x.sucursalNombre],
+    ["Dirección de entrega", (x) => x.direccionEntrega],
+    ["Fecha de entrega", (x) => x.fechaEntrega],
+    [
+      "Productos a entregar",
+      (x) =>
+        (x.detalles || [])
+          .map((l) =>
+            [
+              l.codigo,
+              l.nombre || l.productoId,
+              l.cantidad + " " + (l.unidad || "UND"),
+            ]
+              .filter(Boolean)
+              .join(" · "),
+          )
+          .join("\n"),
+    ],
+    ["Ruta", (x) => x.ruta || ""],
+    ["Unidad", (x) => x.unidad || ""],
+    [
+      "Estado",
+      (x) =>
+        x.estado === "INCIDENCIA" ? "Esperando atención de Kevin" : x.estado,
+    ],
+    ["Comentarios de entrega", (x) => x.comentarios || ""],
+  ],
+  incidencias: [
+    ["Pedido", (x) => x.numero || x.pedidoId],
+    ["Sucursal de entrega", (x) => x.sucursalNombre],
+    ["Problema reportado", (x) => x.detalle],
+    [
+      "Estado",
+      (x) =>
+        x.estado === "ABIERTA"
+          ? "Pendiente de Kevin"
+          : x.estado === "REASIGNADA"
+            ? "Reasignación aprobada"
+            : x.estado,
+    ],
+    ["Reportado", (x) => hora(x.creado)],
+    ["Atendido", (x) => hora(x.resuelto)],
+    ["Unidad asignada", (x) => x.nuevaUnidad || ""],
+  ],
+};
 function opciones(id, rows, primero) {
   const e = $(id),
     prev = e.value;
@@ -540,12 +603,40 @@ function prepararFiltros() {
   }
   opciones(
     "f-sucursal",
-    (catalogos.sucursales || []).map((s) => ({ id: s.id, nombre: s.nombre })),
+    repartidor()
+      ? [
+          ...new Map(
+            datos
+              .filter((x) => x.sucursalId)
+              .map((x) => [
+                x.sucursalId,
+                { id: x.sucursalId, nombre: x.sucursalNombre },
+              ]),
+          ).values(),
+        ]
+      : (catalogos.sucursales || []).map((s) => ({
+          id: s.id,
+          nombre: s.nombre,
+        })),
     "Todas",
   );
   opciones(
     "f-producto",
-    (catalogos.productos || []).map((p) => ({ id: p.id, nombre: p.nombre })),
+    repartidor()
+      ? [
+          ...new Map(
+            datos
+              .flatMap((x) => x.detalles || [])
+              .map((l) => [
+                l.productoId,
+                { id: l.productoId, nombre: l.nombre || l.productoId },
+              ]),
+          ).values(),
+        ]
+      : (catalogos.productos || []).map((p) => ({
+          id: p.id,
+          nombre: p.nombre,
+        })),
     "Todos",
   );
   opciones(
@@ -569,7 +660,7 @@ function prepararFiltros() {
 }
 // Recorre los datos y construye las filas de la tabla.
 function pintar() {
-  const cs = cols[modulo];
+  const cs = repartidor() ? columnasReparto[modulo] : cols[modulo];
   if (!cs) return;
   const q = $("buscar").value.toLocaleLowerCase(),
     s = $("f-sucursal").value,
@@ -621,7 +712,13 @@ function pintar() {
   }
   if (!list.length) {
     const tr = nodo("tr", undefined, $("filas")),
-      td = nodo("td", "No hay registros para estos filtros.", tr);
+      td = nodo(
+        "td",
+        repartidor()
+          ? "No tienes entregas o incidencias asignadas para estos filtros."
+          : "No hay registros para estos filtros.",
+        tr,
+      );
     td.colSpan = cs.length + 1;
     td.className = "empty";
   }
@@ -663,6 +760,22 @@ function metricas(list) {
   }
 }
 function acciones(x, td) {
+  if (gerente() && modulo === "incidencias" && x.estado === "ABIERTA")
+    boton(
+      "Atender y reasignar",
+      async () => {
+        try {
+          const pedidos = (await api("/api/datos?modulo=pedidos")).filas;
+          const p = pedidos.find((p) => p.id === x.pedidoId);
+          if (!p || p.estado !== "INCIDENCIA")
+            throw Error("La incidencia ya fue atendida. Actualiza la lista.");
+          formulario("reasignar", p);
+        } catch (e) {
+          mensaje(e.message, true);
+        }
+      },
+      td,
+    );
   if (modulo === "solicitudes_produccion" && gerente()) {
     if (x.estado === "PENDIENTE")
       boton(
@@ -896,7 +1009,7 @@ function formulario(a, x = null) {
     crearPedido: "Nuevo pedido",
     modificarPedido: "Modificar pedido",
     despachar: "Despachar pedido",
-    reasignar: "Asignar otra unidad",
+    reasignar: "Aprobar reasignación de reparto",
     incidencia: "Reportar problema",
     solicitarProduccion: "Solicitar producción",
     autorizarDescuento: "Autorizar descuento por 12 horas",
