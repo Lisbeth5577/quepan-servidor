@@ -54,10 +54,10 @@ const Dashboard = (() => {
       ["Producto", (p) => p.nombre], ["Pedidos", (p) => cantidad(p.pedidos)],
       ["Cantidad", (p) => cantidad(p.cantidad) + " " + p.unidad]
     ], x.ranking.slice(0, 5));
-    tabla("dash-inventario", [
-      ["Sucursal", f => f.sucursal], ["Código", f => f.codigo],
-      ["Producto", f => f.producto], ["Existencias", f => cantidad(f.existencia) + " " + f.unidad]
-    ], [...(x.inventarioProduccion || []), ...(x.inventarioSucursales || [])]);
+    tabla("dash-inventario", [["Ubicación", (f) => f[0]], ["Cantidad", (f) => f[1]]], [
+      ["Producción", unidades(t.stockProduccion)], ["Disponible", unidades(t.disponible)],
+      ["Reservado", unidades(t.reservado)], ["Sucursales", unidades(t.stockSucursales)]
+    ]);
     $("dash-actualizado").textContent = "";
   }
   async function cargar(silencioso = false) {
