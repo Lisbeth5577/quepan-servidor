@@ -283,3 +283,6 @@ th, td { border-color: #c4bbab; }
  .login-imagen h2 { font-size: 25px; }
  .login-formulario { padding: 20px; }
 }
+
+nav button:hover { background: #d5dec9; color: #344c38; }
+nav button.activo:hover { background: #354c3b; color: #fffdf5; }
