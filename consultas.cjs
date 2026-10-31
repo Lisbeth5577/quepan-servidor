@@ -74,8 +74,14 @@ async function consultar(db, uid, modulo) {
           x.sucursalId === u.sucursalId ||
           x.origenId === u.sucursalId),
     );
-  if (modulo === "incidencias" && !gerente)
-    rows = rows.filter((x) => x.vendedorUid === uid);
+  if (modulo === "incidencias") {
+    // Las incidencias de pedidos de prueba no se muestran en la operación diaria.
+    const pruebas = new Set((await todos(db, "pedidos"))
+      .filter((x) => x.esPrueba === true).map((x) => x.id));
+    rows = rows.filter((x) => x.esPrueba !== true &&
+      !pruebas.has(x.pedidoId) && x.pedidoId !== "demo-ruta-20261019");
+    if (!gerente) rows = rows.filter((x) => x.vendedorUid === uid);
+  }
   if (modulo === "salidas_sucursales" && !gerente)
     rows = rows.filter((x) => x.sucursalId === u.sucursalId);
   if (["productos", "ingredientes", "recetas", "sucursales"].includes(modulo))

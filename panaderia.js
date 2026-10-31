@@ -281,24 +281,6 @@ async function conectar() {
   }
   if (perfil && stream === controller) setTimeout(conectar, 3000);
 }
-const ayudas = {
-  solicitudes_produccion:
-    "Solicita, autoriza y finaliza el lote. Solo al finalizar se rebajan ingredientes y se aumenta el producto terminado. La producción directa del gerente se conserva.",
-  descuentos:
-    "El gerente autoriza desde Inventario por sucursal. Dura 12 horas y tiene una cantidad máxima. No cambia el precio normal. Al vender, marca Aplicar descuento autorizado.",
-  productos:
-    "Disponible = existencia en producción menos unidades reservadas por pedidos. El stock se valida nuevamente al guardar.",
-  pedidos:
-    "Los pedidos pendientes se pueden modificar o cancelar. Los cancelados se ocultan aquí y se conservan en el reporte. El origen puede ser producción u otra sucursal.",
-  inventario_sucursales:
-    "Consulta qué sucursal tiene producto. En tu sucursal registra ventas o un conteo físico. Con una unidad o menos aparece «Pedir más producto». Las existencias anteriores requieren un conteo inicial.",
-  recetas:
-    "Registra el rendimiento y las cantidades de ingredientes. Eliminar desactiva la receta y conserva el historial.",
-  sucursales:
-    "Direcciones editables y prefijos únicos para numerar pedidos. Las cuentas de nuevos vendedores deben crearse y asignarse antes de pedir.",
-  salidas_sucursales:
-    "Cada venta o conteo conserva quién lo registró, el motivo y la existencia resultante.",
-};
 // Cambia la sección visible y pide sus datos al servidor.
 async function abrir(m) {
   modulo = m;
@@ -307,7 +289,8 @@ async function abrir(m) {
     $(id).value = "";
   editing = null;
   $("titulo").textContent = nombres[m];
-  $("ayuda").textContent = ayudas[m] || "";
+  $("ayuda").textContent = "";
+  $("ayuda").hidden = true;
   $("captura").hidden = true;
   $("reporte").hidden = m !== "reportes";
   $("tabla").hidden = ["reportes", "dashboard"].includes(m);
@@ -334,9 +317,7 @@ async function abrir(m) {
   }
   if (m === "reportes") {
     $("fecha-reporte").value = hoy();
-    mensaje(
-      "Elige la fecha y un listado. Cada vendedor descarga únicamente su sucursal.",
-    );
+    mensaje("");
     return;
   }
   try {
@@ -346,7 +327,7 @@ async function abrir(m) {
     datos = x.filas;
     prepararFiltros();
     pintar();
-    mensaje("Información actualizada.");
+    mensaje("");
   } catch (e) {
     mensaje(e.message, true);
   }
@@ -637,9 +618,8 @@ function pintar() {
     td.colSpan = cs.length + 1;
     td.className = "empty";
   }
-  $("resumen").textContent =
-    list.length +
-    " registros visibles · Los cambios se reciben mientras haya conexión.";
+  $("resumen").textContent = "";
+  $("resumen").hidden = true;
   metricas(list);
 }
 function metricas(list) {
@@ -1009,11 +989,6 @@ function formulario(a, x = null) {
         (q.value =
           (catalogos.recetas || []).find((r) => r.id === s.value)
             ?.rendimiento || 1);
-      nodo(
-        "p",
-        "Al confirmar se descontarán estos ingredientes y se sumarán las unidades terminadas. Los reintentos de la misma solicitud no repiten el descuento.",
-        $("campos"),
-      ).className = "nota";
       const vista = nodo("div", undefined, $("campos"));
       vista.id = "vista-consumo";
       vista.className = "consumo-previo";
