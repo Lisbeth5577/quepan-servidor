@@ -104,14 +104,7 @@ exports.enviarAviso = onDocumentCreated(
       fallos = 0;
     for (const user of users.docs) {
       if (!user.data().activo) continue;
-      if (n.destinatarioUid && user.id !== n.destinatarioUid) continue;
-      if (
-        n.tipo === "STOCK_SUCURSAL"
-          ? user.data().rol !== "GERENTE" &&
-            user.data().sucursalId !== n.sucursalId
-          : n.tipo === "INCIDENCIA" && user.data().rol !== "GERENTE"
-      )
-        continue;
+      if (!require("./consultas.cjs").puedeVerAviso(n, user.data(), user.id)) continue;
       const rawTokens = await user.ref.collection("tokens").get();
       const tokens = {
         docs: rawTokens.docs.filter((t) => t.data().activo !== false),
@@ -129,6 +122,9 @@ exports.enviarAviso = onDocumentCreated(
             notification: {
               channelId: "sipropan_alertas",
               tag: event.params.id,
+              sound: "default",
+              defaultVibrateTimings: true,
+              priority: "high",
             },
           },
         });

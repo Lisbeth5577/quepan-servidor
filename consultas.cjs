@@ -38,6 +38,11 @@ async function todos(db, c) {
   } while (true);
   return out;
 }
+function puedeVerAviso(n, u, uid) {
+  if (n.destinatarioUid) return n.destinatarioUid === uid;
+  if (n.tipo === "STOCK_SUCURSAL") return u.rol === "GERENTE" || (u.rol === "VENDEDOR" && Boolean(u.sucursalId) && n.sucursalId === u.sucursalId);
+  return u.rol === "GERENTE";
+}
 async function consultar(db, uid, modulo) {
   d.exigir(
     listas.includes(modulo),
@@ -49,7 +54,7 @@ async function consultar(db, uid, modulo) {
   const gerente = u.rol === "GERENTE";
   const repartidor = u.rol === "REPARTIDOR";
   d.exigir(
-    !repartidor || ["pedidos", "incidencias"].includes(modulo),
+    !repartidor || ["pedidos", "incidencias", "notificaciones"].includes(modulo),
     "El repartidor solo consulta sus entregas",
     "permission-denied",
   );
@@ -64,11 +69,13 @@ async function consultar(db, uid, modulo) {
         "inventario_sucursales",
         "salidas_sucursales",
         "alertas",
+        "notificaciones",
       ].includes(modulo),
     "Solo el gerente puede consultar este módulo",
     "permission-denied",
   );
   let rows = await todos(db, modulo);
+  if (modulo === "notificaciones") rows = rows.filter(n => puedeVerAviso(n, u, uid));
   if (modulo === "descuentos" && !gerente)
     rows = rows.filter((x) => x.sucursalId === u.sucursalId);
   if (modulo === "pedidos")
@@ -101,7 +108,7 @@ async function consultar(db, uid, modulo) {
         sucursalNombre: sucursales.get(sucursalId)?.nombre || p.sucursalNombre || x.sucursalNombre || sucursalId };
     });
   }
-  if (repartidor) {
+  if (repartidor && ["pedidos", "incidencias"].includes(modulo)) {
     const sucursales = new Map(
       (await todos(db, "sucursales")).map((s) => [s.id, s]),
     );
@@ -224,4 +231,4 @@ async function consultar(db, uid, modulo) {
     miSucursal: u.sucursalId || null,
   };
 }
-module.exports = { consultar, todos, serial };
+module.exports = { consultar, todos, serial, puedeVerAviso };

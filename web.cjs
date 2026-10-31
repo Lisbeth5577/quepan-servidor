@@ -112,6 +112,7 @@ function conWeb(
           "producciones",
           "salidas_sucursales",
           "incidencias",
+          "notificaciones",
         ])
           paradas.push(db.collection(c).onSnapshot(enviar, cerrar));
         res.write(": conectado\n\n");

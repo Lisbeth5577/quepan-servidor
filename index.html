@@ -78,6 +78,7 @@
             ><button id="salir" class="secondary">Cerrar sesión</button>
           </div>
         </div>
+        <div id="avisos-emergentes" class="avisos-emergentes" role="region" aria-label="Avisos nuevos" aria-live="polite"></div>
         <div class="workspace">
           <!-- JavaScript agrega los botones según el rol del usuario. -->
           <nav id="modulos" aria-label="Secciones"></nav>
@@ -96,6 +97,7 @@
             <section id="dashboard" hidden aria-label="Resumen general del sistema">
               <label class="resumen-mes">Mes<input id="dash-mes" type="month" min="2000-01" max="2099-12" required /></label>
               <p id="dash-actualizado" role="status"></p>
+              <section class="resumen-panel"><h3>Alertas recientes</h3><div id="avisos-recientes" role="region" aria-label="Alertas recientes"></div></section>
               <div id="dash-cifras" class="resumen-tarjetas"></div>
               <section class="resumen-panel">
                 <h3>Ingresos por sucursal</h3>

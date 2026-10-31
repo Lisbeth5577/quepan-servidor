@@ -184,7 +184,7 @@ $("login").onsubmit = async (e) => {
       if (
         gerente() ||
         (repartidor()
-          ? ["pedidos", "incidencias"].includes(m)
+          ? ["pedidos", "incidencias", "notificaciones"].includes(m)
           : [
               "descuentos",
               "productos",
@@ -194,6 +194,7 @@ $("login").onsubmit = async (e) => {
               "sucursales",
               "incidencias",
               "reportes",
+              "notificaciones",
             ].includes(m))
       )
         boton(tituloModulo(m), () => abrir(m), $("modulos"));
@@ -202,6 +203,8 @@ $("login").onsubmit = async (e) => {
     await abrir(
       gerente() ? "dashboard" : repartidor() ? "pedidos" : "productos",
     );
+    AvisosWeb.reiniciar();
+    await AvisosWeb.actualizar();
     conectar();
   } catch (err) {
     sesion = null;
@@ -212,6 +215,7 @@ $("login").onsubmit = async (e) => {
   }
 };
 $("salir").onclick = () => {
+  AvisosWeb.reiniciar();
   stream?.abort();
   stream = null;
   sesion = null;
@@ -290,6 +294,7 @@ async function conectar() {
         const event = buffer.slice(0, i);
         buffer = buffer.slice(i + 2);
         if (event.includes("event: actualizar")) {
+          AvisosWeb.actualizar();
           clearTimeout(refreshTimer);
           refreshTimer = setTimeout(refrescarSilencioso, 300);
         }
@@ -1730,3 +1735,46 @@ function vistaTotalPedido() {
       ". Total pendiente."
     : "Total del pedido: " + quetzales(total);
 }
+
+// Avisos visuales: la primera lectura muestra historial; solo los nuevos abren una ventana.
+const AvisosWeb = (() => {
+  let vistos = new Set(), inicio = false, leyendo = false, generacion = 0;
+  function reiniciar() {
+    generacion++; vistos = new Set(); inicio = false; leyendo = false;
+    $("avisos-emergentes").replaceChildren(); $("avisos-recientes").replaceChildren();
+  }
+  async function actualizar() {
+    if (!perfil || leyendo) return;
+    leyendo = true; const turno = generacion;
+    try {
+      const respuesta = await api("/api/datos?modulo=notificaciones");
+      if (!perfil || turno !== generacion) return;
+      const filas = respuesta.filas.sort((a, b) => String(b.creado || "").localeCompare(String(a.creado || "")) || a.id.localeCompare(b.id));
+      const panel = $("avisos-recientes"); panel.replaceChildren();
+      if (!filas.length) nodo("p", "Sin alertas", panel);
+      for (const aviso of filas.slice(0, 5)) {
+        const item = nodo("div", undefined, panel); item.className = "aviso-reciente";
+        nodo("strong", aviso.titulo || "Aviso", item);
+        nodo("p", aviso.mensaje || "", item);
+        nodo("small", hora(aviso.creado), item);
+      }
+      for (const aviso of filas.slice().reverse()) {
+        if (inicio && !vistos.has(aviso.id)) emergente(aviso);
+        vistos.add(aviso.id);
+      }
+      inicio = true;
+    } catch { /* La siguiente actualización vuelve a consultar sin borrar el historial. */ }
+    finally { if (turno === generacion) leyendo = false; }
+  }
+  function emergente(aviso) {
+    const contenedor = $("avisos-emergentes");
+    while (contenedor.children.length >= 3) contenedor.firstElementChild.remove();
+    const item = nodo("div", undefined, contenedor); item.className = "aviso-emergente";
+    nodo("strong", aviso.titulo || "Aviso", item);
+    nodo("p", aviso.mensaje || "", item);
+    const cerrar = nodo("button", "Cerrar aviso", item); cerrar.type = "button";
+    cerrar.onclick = () => item.remove();
+    setTimeout(() => item.remove(), 15000);
+  }
+  return { actualizar, reiniciar };
+})();
