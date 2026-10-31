@@ -9,7 +9,7 @@
     <script src="/web/panaderia.js" defer></script>
     <script src="/web/dashboard-ui.js" defer></script>
   </head>
-  <body>
+  <body class="login-abierto">
     <!-- Encabezado sencillo. No necesita bibliotecas de diseño. -->
     <header>
       <!-- Logo institucional aportado por la usuaria; no es una creación propia. -->
@@ -22,37 +22,41 @@
       <p><a href="/">Descargar aplicación Android</a></p>
     </header>
     <main>
+      <!-- Acceso de dos paneles. Los campos conservan sus identificadores. -->
       <section id="acceso" class="login-card">
-        <!-- Imagen original del proyecto; el acceso conserva sus mismos campos. -->
-        <div class="login-imagen">
-          <img src="/web/pan-pixel.png" alt="Ilustración original de panes de Panadería San Carlos" />
-          <p>Panadería San Carlos</p>
-          <h2>¡Qué Pan!</h2>
-          <p>Producción, pedidos y entregas en un mismo lugar.</p>
+        <div class="login-presentacion">
+          <div class="login-marca">
+            <svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true">
+              <path d="M7 28C7 16 15 10 25 10S42 18 42 28C42 36 33 39 24 39S7 36 7 28Z" fill="none" stroke="currentColor" stroke-width="1.5" />
+              <path d="m17 17 6 9m3-11 6 9m3-7 4 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+            </svg>
+            <div><strong>¡Qué Pan!</strong><span>PANADERÍA SAN CARLOS</span></div>
+          </div>
+          <div class="login-bienvenida">
+            <p class="login-etiqueta">EL SABOR DE CADA DÍA</p>
+            <h2>Cada día empieza<br>con un buen pan.</h2>
+            <p>Organiza los pedidos, la producción y las entregas de Panadería San Carlos.</p>
+          </div>
+          <div class="login-resumen"><span>Pedidos y entregas</span><span>Producción e inventario</span></div>
+          <span class="login-iniciales" aria-hidden="true">SC</span>
         </div>
         <div class="login-formulario">
-        <h2>Iniciar sesión</h2>
-        <p>Ingresa con tu correo y contraseña.</p>
-        <p>Si el servidor está en reposo, la primera conexión puede tardar.</p>
-        <!-- Los identificadores permiten encontrar los campos desde JavaScript. -->
-        <form id="login">
-          <label
-            >Correo<input
-              id="correo"
-              type="email"
-              required
-              autocomplete="username"
-              maxlength="254"
-              placeholder="Tu correo asignado" /></label
-          ><label
-            >Contraseña<input
-              id="clave"
-              type="password"
-              required
-              autocomplete="current-password"
-              placeholder="Tu contraseña" /></label
-          ><button type="submit">Entrar</button>
-        </form>
+          <div class="login-institucion">
+            <img src="/web/logo-academico.png" alt="Logo de la Universidad Mariano Gálvez de Guatemala" width="48" height="48" />
+            <span>Proyecto académico<br>Panadería San Carlos</span>
+          </div>
+          <div class="login-campos">
+            <p class="login-etiqueta">BIENVENIDO A ¡QUÉ PAN!</p>
+            <h2>Ingresa a tu panadería</h2>
+            <p class="login-instruccion">Usa tu correo y contraseña para continuar.</p>
+            <form id="login">
+              <label>Correo<input id="correo" type="email" required autocomplete="username" maxlength="254" placeholder="Tu correo asignado" /></label>
+              <label>Contraseña<input id="clave" type="password" required autocomplete="current-password" placeholder="Tu contraseña" /></label>
+              <button type="submit">Iniciar sesión</button>
+            </form>
+            <p class="login-espera">La primera conexión puede tardar si el servidor está en reposo.</p>
+            <a class="login-descarga" href="/">Descargar aplicación Android</a>
+          </div>
         </div>
       </section>
       <p id="mensaje" role="status" aria-live="polite">
@@ -84,126 +88,25 @@
               </div>
             </div>
             <p id="ayuda" class="nota"></p>
-            <section
-              id="dashboard"
-              hidden
-              aria-label="Resumen general del sistema"
-            >
-              <div class="card dash-intro">
-                <div>
-                  <h3>Resumen del mes</h3>
-                  <p>
-                    Elige un mes para revisar la demanda y las entregas. Las
-                    existencias muestran el saldo actual.
-                  </p>
-                </div>
-                <label
-                  >Mes del resumen<input
-                    id="dash-mes"
-                    type="month"
-                    min="2000-01"
-                    max="2099-12"
-                    required
-                /></label>
-              </div>
-              <p id="dash-actualizado" class="nota" role="status"></p>
-              <p id="dash-pruebas" class="nota"></p>
-              <section>
-                <h3>Ingresos por sucursal del mes</h3>
-                <p>
-                  Quetzales. Solo ventas registradas. Pedidos y entregas no son
-                  ingresos.
-                </p>
-                <p id="dash-ingresos"></p>
+            <!-- Dashboard breve: los valores vienen del servidor. -->
+            <section id="dashboard" hidden aria-label="Resumen general del sistema">
+              <label class="resumen-mes">Mes<input id="dash-mes" type="month" min="2000-01" max="2099-12" required /></label>
+              <p id="dash-actualizado" role="status"></p>
+              <div id="dash-cifras" class="resumen-tarjetas"></div>
+              <section class="resumen-panel">
+                <h3>Ingresos por sucursal</h3>
                 <div id="dash-finanzas" class="table-wrap"></div>
-                <p>
-                  Los importes pendientes y las salidas antiguas sin clasificar
-                  no se cuentan como ingresos de cero.
-                </p>
               </section>
-              <div id="dash-cifras" class="dash-cifras"></div>
-              <div id="dash-cantidades" class="dash-cifras"></div>
-              <div class="dash-doble">
-                <section class="card">
-                  <h3>Producto más pedido</h3>
-                  <p class="nota">
-                    Según el número de pedidos vigentes en que aparece.
-                    Cantidades con su unidad.
-                  </p>
-                  <div id="dash-top"></div>
+              <div class="resumen-paneles">
+                <section class="resumen-panel">
+                  <h3>Productos más pedidos</h3>
                   <div id="dash-ranking" class="table-wrap"></div>
                 </section>
-                <section class="card">
-                  <h3>Pedidos por sucursal</h3>
-                  <p class="nota">
-                    Pedidos vigentes creados en el mes seleccionado.
-                  </p>
-                  <div id="dash-sucursales"></div>
+                <section class="resumen-panel">
+                  <h3>Inventario actual</h3>
+                  <div id="dash-inventario" class="table-wrap"></div>
                 </section>
               </div>
-              <div class="dash-doble">
-                <section class="card">
-                  <h3>Actividad diaria del mes</h3>
-                  <p class="nota">
-                    Pedidos vigentes por fecha de creación. Solo días con
-                    actividad.
-                  </p>
-                  <div id="dash-dias" class="dash-barras"></div>
-                </section>
-                <section class="card">
-                  <h3>Estado de los pedidos del mes</h3>
-                  <div id="dash-estados"></div>
-                  <h3>Recuento de todo el sistema</h3>
-                  <div id="dash-totales"></div>
-                </section>
-              </div>
-              <section class="card">
-                <h3>Inventario actual y producción</h3>
-                <p class="nota">
-                  No corresponde a un cierre histórico del mes. Las cantidades
-                  de unidades distintas se muestran separadas.
-                </p>
-                <div id="dash-inventario" class="dash-cifras"></div>
-                <div class="dash-doble">
-                  <div>
-                    <h4>Producto terminado por reponer</h4>
-                    <div id="dash-alertas-productos" class="table-wrap"></div>
-                  </div>
-                  <div>
-                    <h4>Materia prima por reponer</h4>
-                    <div
-                      id="dash-alertas-ingredientes"
-                      class="table-wrap"
-                    ></div>
-                  </div>
-                </div>
-                <p id="dash-faltantes" class="nota"></p>
-              </section>
-              <section class="card">
-                <h3>Así se mueve el inventario</h3>
-                <ol class="flujo-stock">
-                  <li>
-                    <strong>Producir:</strong> baja la materia prima según la
-                    receta y sube el producto terminado.
-                  </li>
-                  <li>
-                    <strong>Crear pedido:</strong> reserva unidades disponibles;
-                    no descuenta dos veces.
-                  </li>
-                  <li>
-                    <strong>Despachar:</strong> baja el producto del origen y
-                    libera su reserva.
-                  </li>
-                  <li>
-                    <strong>Entregar:</strong> suma unidades en la sucursal de
-                    destino.
-                  </li>
-                  <li>
-                    <strong>Vender:</strong> baja el producto terminado de la
-                    sucursal.
-                  </li>
-                </ol>
-              </section>
             </section>
             <div id="indicadores" class="metrics"></div>
             <section id="captura" class="card" hidden>

@@ -164,6 +164,7 @@ $("login").onsubmit = async (e) => {
       " · " +
       (gerente() ? "Gerente" : nombre("sucursales", perfil.sucursalId));
     $("acceso").hidden = true;
+    document.body.classList.remove("login-abierto");
     $("aplicacion").hidden = false;
     $("reintentar").hidden = !pendiente;
     $("modulos").replaceChildren();
@@ -204,6 +205,7 @@ $("salir").onclick = () => {
   pendiente = null;
   $("aplicacion").hidden = true;
   $("acceso").hidden = false;
+  document.body.classList.add("login-abierto");
   $("filas").replaceChildren();
   if (window.QuePanAndroid) window.QuePanAndroid.cerrarSesion();
   mensaje("Sesión cerrada.");

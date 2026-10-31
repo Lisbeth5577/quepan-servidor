@@ -266,24 +266,6 @@ th, td { border-color: #c4bbab; }
 #mensaje { background: #ecefdf; border-color: #a3ad96; }
 #mensaje.error { background: #f3e2de; }
 .session { border-color: #c4bbab; }
-/* La imagen solo aparece antes de iniciar sesión. */
-.login-card { display: flex; max-width: 1000px; margin: 28px auto; border: 1px solid #c4bbab; background: #fffdf8; }
-.login-imagen { width: 45%; background: #e4e8db; padding: 24px; box-sizing: border-box; }
-.login-imagen img { display: block; width: 100%; height: 270px; object-fit: cover; border: 1px solid #a3ad96; box-sizing: border-box; }
-.login-imagen p { margin: 12px 0; }
-.login-imagen h2 { margin: 6px 0; color: #49634f; font-size: 30px; }
-.login-formulario { flex: 1; padding: 28px; min-width: 0; }
-.login-formulario h2 { margin-top: 0; }
-#login button { width: 100%; max-width: 460px; text-align: center; margin-top: 18px; }
-@media (max-width: 650px) {
- header { padding: 16px; }
- .login-card { display: block; margin: 16px 0; }
- .login-imagen { width: 100%; padding: 16px; }
- .login-imagen img { height: 180px; }
- .login-imagen h2 { font-size: 25px; }
- .login-formulario { padding: 20px; }
-}
-
 nav button:hover { background: #d5dec9; color: #344c38; }
 nav button.activo:hover { background: #354c3b; color: #fffdf5; }
 
@@ -295,4 +277,65 @@ header::after { content: ""; display: block; clear: both; }
 @media (max-width: 650px) {
  .identidad-academica { width: 80px; margin-left: 12px; }
  .identidad-academica img { width: 64px; height: 64px; }
+}
+
+/* 7. Acceso de dos paneles: presentación verde y formulario crema. */
+.login-abierto { margin: 0; background: #f5f3ed; }
+.login-abierto > header, .login-abierto > footer { display: none; }
+.login-abierto main { padding: 32px 20px; }
+.login-abierto #mensaje:not(.error) { display: none; }
+.login-abierto #mensaje.error { max-width: 880px; margin: 16px auto; }
+.login-card { display: flex; width: 100%; max-width: 980px; min-height: 570px; margin: 4vh auto; border: 1px solid #d8d8ce; border-radius: 26px; overflow: hidden; background: #fbfaf6; box-sizing: border-box; }
+.login-presentacion { position: relative; display: flex; flex-direction: column; justify-content: space-between; width: 47%; padding: 38px 40px; box-sizing: border-box; background: #234f40; color: #f7efd9; overflow: hidden; }
+.login-marca { display: flex; align-items: center; gap: 10px; position: relative; z-index: 1; }
+.login-marca strong { display: block; font-family: Georgia, serif; font-size: 21px; font-weight: normal; }
+.login-marca span { display: block; font-size: 8px; letter-spacing: 2px; margin-top: 4px; }
+.login-bienvenida { position: relative; z-index: 1; margin: 55px 0 42px; }
+.login-etiqueta { font-size: 9px; letter-spacing: 2px; margin-bottom: 14px; }
+.login-bienvenida h2 { font-family: Georgia, serif; font-size: 38px; font-weight: normal; line-height: 1.12; color: #f7efd9; margin: 0 0 22px; }
+.login-bienvenida > p:last-child { font-size: 12px; max-width: 270px; line-height: 1.8; color: #dce4d5; }
+.login-resumen { display: flex; gap: 24px; font-size: 10px; position: relative; z-index: 1; padding-top: 20px; border-top: 1px solid #608071; }
+.login-iniciales { position: absolute; bottom: -55px; right: -4px; font: 180px Georgia, serif; color: #34624f; opacity: .6; pointer-events: none; }
+.login-formulario { display: flex; flex-direction: column; width: 53%; padding: 38px 42px 32px; box-sizing: border-box; min-width: 0; }
+.login-institucion { display: flex; align-items: center; gap: 10px; color: #625f52; font-size: 10px; line-height: 1.5; }
+.login-institucion img { display: block; width: 48px; height: 48px; object-fit: contain; }
+.login-campos { margin-top: 55px; }
+.login-campos .login-etiqueta { color: #6d7667; font-size: 8px; }
+.login-campos h2 { font-family: Georgia, serif; color: #273b30; font-size: 25px; line-height: 1.25; margin: 0 0 8px; }
+.login-instruccion { font-size: 12px; color: #716b60; margin-bottom: 22px; }
+#login { max-width: none; }
+#login label { font-size: 12px; color: #493b31; margin: 14px 0; }
+#login input { max-width: none; background: #fff; border: 1px solid #deded5; border-radius: 5px; font-size: 13px; padding: 10px 12px; }
+#login button { width: 100%; margin: 20px 0 0; padding: 10px; background: #234f40; border-color: #234f40; border-radius: 5px; text-align: center; font-size: 13px; }
+#login button:hover { background: #183f32; }
+.login-espera { font-size: 10px; color: #777267; margin: 16px 0 8px; }
+.login-descarga { color: #49634f; font-size: 11px; }
+@media (max-width: 650px) {
+ .login-abierto main { padding: 16px 12px; }
+ .login-card { display: block; margin: 0 auto; min-height: 0; border-radius: 20px; }
+ .login-presentacion { width: 100%; padding: 24px; }
+ .login-bienvenida { margin: 28px 0 4px; }
+ .login-bienvenida h2 { font-size: 30px; margin-bottom: 12px; }
+ .login-bienvenida > p:last-child { margin-bottom: 6px; }
+ .login-resumen { display: none; }
+ .login-iniciales { font-size: 130px; bottom: -30px; }
+ .login-formulario { width: 100%; padding: 26px 24px; }
+ .login-campos { margin-top: 26px; }
+}
+
+/* 8. Dashboard puntual: cifras y tres tablas breves. */
+.resumen-mes { max-width: 200px; margin-top: 0; }
+#dash-actualizado:empty, #mensaje:empty { display: none; }
+.resumen-tarjetas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
+.resumen-tarjeta { padding: 16px; background: #fffdf8; border: 1px solid #d6d9cc; border-left: 4px solid #49634f; border-radius: 5px; }
+.resumen-tarjeta span { display: block; font-size: 13px; color: #635b50; }
+.resumen-tarjeta strong { display: block; margin-top: 8px; font-size: 27px; color: #284c39; }
+.resumen-panel { background: #fffdf8; border: 1px solid #d6d9cc; border-radius: 5px; padding: 16px; margin: 16px 0; min-width: 0; }
+.resumen-panel h3 { margin: 0 0 12px; font-size: 17px; }
+.resumen-panel table { margin: 0; }
+.resumen-paneles { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.resumen-paneles .resumen-panel { margin-top: 0; }
+@media (max-width: 800px) {
+ .resumen-tarjetas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+ .resumen-paneles { display: block; }
 }
