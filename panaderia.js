@@ -873,7 +873,8 @@ function acciones(x, td) {
           ? repartidor() && x.repartidorUid === perfil.uid
           : x.vendedorUid === perfil.uid))
     ) {
-      boton("Confirmar entrega", () => confirmarEntrega(x), td);
+      if (repartidor() && x.repartidorUid === perfil.uid)
+        boton("Confirmar entrega", () => confirmarEntrega(x), td);
       boton(
         "Reportar problema",
         () => formulario("incidencia", x),

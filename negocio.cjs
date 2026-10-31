@@ -542,7 +542,11 @@ function crearNegocio(db, { reloj = () => new Date() } = {}) {
             autorizado: antes.autorizado || stamp(),
           });
         } else if (action === "entregar") {
-          d.autor(u, uid, antes);
+          d.exigir(
+            u.rol === "REPARTIDOR" && antes.repartidorUid === uid,
+            "Solo el repartidor asignado puede confirmar la entrega",
+            "permission-denied",
+          );
           d.exigir(antes.estado === "EN_RUTA", "El pedido no está en ruta");
           for (const l of antes.detalles) {
             const s = await stock(antes.sucursalId, l.productoId);
@@ -559,6 +563,8 @@ function crearNegocio(db, { reloj = () => new Date() } = {}) {
             estado: "ENTREGADO",
             entregado: stamp(),
             inventarioSucursalAplicado: true,
+            entregadoPor: uid,
+            entregadoPorNombre: u.nombre || "Repartidor",
           });
         } else if (action === "incidencia") {
           d.autor(u, uid, antes);
