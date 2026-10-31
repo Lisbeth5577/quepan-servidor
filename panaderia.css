@@ -310,6 +310,8 @@ header::after { content: ""; display: block; clear: both; }
 #login button:hover { background: #183f32; }
 .login-espera { font-size: 10px; color: #777267; margin: 16px 0 8px; }
 .login-descarga { color: #49634f; font-size: 11px; }
+.login-horario { margin-top: 24px; border-top: 1px solid #608071; padding-top: 12px; }
+.login-horario p { margin: 8px 0; font-size: 14px; line-height: 1.6; color: #f7efd9; }
 @media (max-width: 650px) {
  .login-abierto main { padding: 16px 12px; }
  .login-card { display: block; margin: 0 auto; min-height: 0; border-radius: 20px; }
