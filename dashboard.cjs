@@ -300,6 +300,15 @@ function resumir(datos, mes) {
     sucursales: [...porSucursal.values()].sort(
       (a, b) => b.pedidos - a.pedidos || a.nombre.localeCompare(b.nombre, "es"),
     ),
+    inventarioProduccion: prods.map(p => ({sucursal: "Producción central", codigo: p.codigo || p.id, producto: p.nombre, existencia: Number(p.existencia || 0), unidad: unidadNormalizada(p.unidad)})),
+    inventarioSucursales: inventarioActivo.map((x) => ({
+      sucursalId: x.sucursalId,
+      sucursal: sucs.find((s) => s.id === x.sucursalId)?.nombre || x.sucursalId,
+      codigo: pm.get(x.productoId)?.codigo || x.productoId,
+      producto: pm.get(x.productoId)?.nombre || x.productoId,
+      existencia: Number(x.existencia || 0),
+      unidad: unidadNormalizada(pm.get(x.productoId)?.unidad),
+    })).sort((a, b) => a.sucursal.localeCompare(b.sucursal, "es") || a.producto.localeCompare(b.producto, "es")),
     alertasProductos,
     alertasIngredientes,
   };

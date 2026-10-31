@@ -28,7 +28,8 @@ const Dashboard = (() => {
       ["Pendientes", cantidad(t.pendientes)],
       ["En ruta", cantidad(t.enRuta)],
       ["Entregas del mes", cantidad(m.entregas)],
-      ["Lotes del mes", cantidad(m.lotes)],
+      ["Producciones registradas", cantidad(m.lotes)],
+      ["Sucursal con más pedidos", x.sucursales?.length ? x.sucursales.filter(s => s.pedidos === x.sucursales[0].pedidos).map(s => s.nombre).join(" / ") + " (" + cantidad(x.sucursales[0].pedidos) + ")" : "Sin pedidos"],
       ["Ingresos del mes", pendientes ? "Pendiente" : dinero(ingresos)]
     ]) {
       const tarjeta = nodo("div", undefined, tarjetas); tarjeta.className = "resumen-tarjeta";
@@ -43,10 +44,10 @@ const Dashboard = (() => {
       ["Producto", (p) => p.nombre], ["Pedidos", (p) => cantidad(p.pedidos)],
       ["Cantidad", (p) => cantidad(p.cantidad) + " " + p.unidad]
     ], x.ranking.slice(0, 5));
-    tabla("dash-inventario", [["Ubicación", (f) => f[0]], ["Cantidad", (f) => f[1]]], [
-      ["Producción", unidades(t.stockProduccion)], ["Disponible", unidades(t.disponible)],
-      ["Reservado", unidades(t.reservado)], ["Sucursales", unidades(t.stockSucursales)]
-    ]);
+    tabla("dash-inventario", [
+      ["Sucursal", f => f.sucursal], ["Código", f => f.codigo],
+      ["Producto", f => f.producto], ["Existencias", f => cantidad(f.existencia) + " " + f.unidad]
+    ], [...(x.inventarioProduccion || []), ...(x.inventarioSucursales || [])]);
     $("dash-actualizado").textContent = "";
   }
   async function cargar(silencioso = false) {

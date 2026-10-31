@@ -499,6 +499,7 @@ const cols = {
   ],
   incidencias: [
     ["Pedido", (x) => x.numero || x.pedidoId],
+    ["Sucursal", (x) => x.sucursalNombre || x.sucursalId || "—"],
     ["Problema", (x) => x.detalle],
     ["Estado", (x) => x.estado],
     ["Reportado", (x) => hora(x.creado)],
@@ -549,6 +550,7 @@ const columnasReparto = {
   ],
   incidencias: [
     ["Pedido", (x) => x.numero || x.pedidoId],
+    ["Sucursal", (x) => x.sucursalNombre || x.sucursalId || "—"],
     ["Sucursal de entrega", (x) => x.sucursalNombre],
     ["Problema reportado", (x) => x.detalle],
     [

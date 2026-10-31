@@ -83,19 +83,23 @@ async function consultar(db, uid, modulo) {
             x.origenId === u.sucursalId),
     );
   if (modulo === "incidencias") {
-    // Las incidencias de pedidos de prueba no se muestran en la operación diaria.
-    const pruebas = new Set(
-      (await todos(db, "pedidos"))
-        .filter((x) => x.esPrueba === true)
-        .map((x) => x.id),
-    );
-    rows = rows.filter(
-      (x) =>
-        x.esPrueba !== true &&
-        !pruebas.has(x.pedidoId) &&
-        x.pedidoId !== "demo-ruta-20261019",
-    );
-    if (!gerente) rows = rows.filter((x) => x.vendedorUid === uid);
+    const pedidos = new Map((await todos(db, "pedidos")).map((p) => [p.id, p]));
+    const sucursales = new Map((await todos(db, "sucursales")).map((s) => [s.id, s]));
+    rows = rows.filter((x) => {
+      const p = pedidos.get(x.pedidoId);
+      if (x.esPrueba === true || p?.esPrueba === true || x.pedidoId === "demo-ruta-20261019") return false;
+      if (gerente) return true;
+      if (repartidor) return (x.repartidorUid || x.vendedorUid) === uid;
+      // El pedido determina la sucursal, aunque la incidencia la reporte un repartidor.
+      return Boolean(u.sucursalId) && (p
+        ? p.sucursalId === u.sucursalId || p.origenId === u.sucursalId
+        : x.sucursalId === u.sucursalId);
+    }).map((x) => {
+      const p = pedidos.get(x.pedidoId) || {};
+      const sucursalId = p.sucursalId || x.sucursalId;
+      return { ...x, numero: p.numero || x.numero, sucursalId,
+        sucursalNombre: sucursales.get(sucursalId)?.nombre || p.sucursalNombre || x.sucursalNombre || sucursalId };
+    });
   }
   if (repartidor) {
     const sucursales = new Map(

@@ -566,7 +566,9 @@ function crearNegocio(db, { reloj = () => new Date() } = {}) {
           crear("incidencias", key, {
             pedidoId,
             numero: antes.numero || pedidoId,
-            vendedorUid: uid,
+            sucursalId: antes.sucursalId,
+            vendedorUid: antes.vendedorUid || uid,
+            reportadoPorUid: uid,
             repartidorUid: antes.repartidorUid || null,
             detalle: d.texto(a.detalle, 500),
             estado: "ABIERTA",
