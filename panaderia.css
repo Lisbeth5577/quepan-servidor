@@ -242,3 +242,44 @@ footer {
     font-size: 14px;
   }
 }
+
+/* 6. Colores vintage: verde musgo, crema, café y palo rosa. */
+body { background: #f6f2e9; color: #493b31; }
+header { background: #49634f; color: #fff9ed; padding: 18px 24px; border-bottom: 5px solid #b98983; }
+header h1 { margin: 0 0 6px; }
+header p { margin: 6px 0; }
+header a { color: #fff4d7; }
+h2, h3, h4 { color: #405643; }
+a { color: #39583f; }
+button { background: #49634f; color: #fffdf5; border-color: #3d5542; border-radius: 4px; }
+button:hover { background: #354c3b; }
+button.secondary { background: #e7ddd1; color: #493b31; border-color: #a99887; }
+button.secondary:hover { background: #d7c8b6; }
+button.danger { background: #eedcd8; color: #762b2b; border-color: #b98983; }
+nav button { background: #e7eade; color: #344c38; border-color: #a3ad96; }
+nav button.activo { background: #49634f; color: #fffdf5; }
+input, select, textarea { border-color: #a99b87; background: #fffdf8; color: #493b31; border-radius: 3px; }
+th { background: #dfe5d6; color: #344c38; }
+td { background: #fffdf8; }
+th, td { border-color: #c4bbab; }
+.nota { color: #635b50; }
+#mensaje { background: #ecefdf; border-color: #a3ad96; }
+#mensaje.error { background: #f3e2de; }
+.session { border-color: #c4bbab; }
+/* La imagen solo aparece antes de iniciar sesión. */
+.login-card { display: flex; max-width: 1000px; margin: 28px auto; border: 1px solid #c4bbab; background: #fffdf8; }
+.login-imagen { width: 45%; background: #e4e8db; padding: 24px; box-sizing: border-box; }
+.login-imagen img { display: block; width: 100%; height: 270px; object-fit: cover; border: 1px solid #a3ad96; box-sizing: border-box; }
+.login-imagen p { margin: 12px 0; }
+.login-imagen h2 { margin: 6px 0; color: #49634f; font-size: 30px; }
+.login-formulario { flex: 1; padding: 28px; min-width: 0; }
+.login-formulario h2 { margin-top: 0; }
+#login button { width: 100%; max-width: 460px; text-align: center; margin-top: 18px; }
+@media (max-width: 650px) {
+ header { padding: 16px; }
+ .login-card { display: block; margin: 16px 0; }
+ .login-imagen { width: 100%; padding: 16px; }
+ .login-imagen img { height: 180px; }
+ .login-imagen h2 { font-size: 25px; }
+ .login-formulario { padding: 20px; }
+}

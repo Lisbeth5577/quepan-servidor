@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="theme-color" content="#49634f" />
-    <title>Panadería San Carlos «QUE PAN»</title>
+    <title>Panadería San Carlos «¡Qué Pan!»</title>
     <link rel="stylesheet" href="/web/panaderia.css" />
     <script src="/web/panaderia.js" defer></script>
     <script src="/web/dashboard-ui.js" defer></script>
@@ -12,12 +12,20 @@
   <body>
     <!-- Encabezado sencillo. No necesita bibliotecas de diseño. -->
     <header>
-      <h1>Panadería San Carlos QUE PAN</h1>
+      <h1>Panadería San Carlos ¡Qué Pan!</h1>
       <p>Sistema de pedidos, producción e inventario</p>
       <p><a href="/">Descargar aplicación Android</a></p>
     </header>
     <main>
       <section id="acceso" class="login-card">
+        <!-- Imagen original del proyecto; el acceso conserva sus mismos campos. -->
+        <div class="login-imagen">
+          <img src="/web/pan-pixel.png" alt="Ilustración original de panes de Panadería San Carlos" />
+          <p>Panadería San Carlos</p>
+          <h2>¡Qué Pan!</h2>
+          <p>Producción, pedidos y entregas en un mismo lugar.</p>
+        </div>
+        <div class="login-formulario">
         <h2>Iniciar sesión</h2>
         <p>Ingresa con tu correo y contraseña.</p>
         <p>Si el servidor está en reposo, la primera conexión puede tardar.</p>
@@ -40,9 +48,10 @@
               placeholder="Tu contraseña" /></label
           ><button type="submit">Entrar</button>
         </form>
+        </div>
       </section>
       <p id="mensaje" role="status" aria-live="polite">
-        Bienvenido a Panadería San Carlos «QUE PAN».
+        Bienvenido a Panadería San Carlos «¡Qué Pan!».
       </p>
       <div id="aplicacion" hidden>
         <div class="session">
@@ -308,6 +317,6 @@
         </div>
       </div>
     </main>
-    <footer>Panadería San Carlos QUE PAN</footer>
+    <footer>Panadería San Carlos ¡Qué Pan!</footer>
   </body>
 </html>
