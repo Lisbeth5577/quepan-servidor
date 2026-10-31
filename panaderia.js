@@ -18,6 +18,8 @@ let sesion = null,
   refreshTimer;
 const nombres = {
   dashboard: "Resumen general",
+  solicitudes_produccion: "Solicitudes de producción",
+  descuentos: "Descuentos",
   productos: "Productos",
   pedidos: "Pedidos y entregas",
   inventario_sucursales: "Inventario por sucursal",
@@ -169,6 +171,7 @@ $("login").onsubmit = async (e) => {
       if (
         gerente() ||
         [
+          "descuentos",
           "productos",
           "pedidos",
           "inventario_sucursales",
@@ -277,6 +280,10 @@ async function conectar() {
   if (perfil && stream === controller) setTimeout(conectar, 3000);
 }
 const ayudas = {
+  solicitudes_produccion:
+    "Solicita, autoriza y finaliza el lote. Solo al finalizar se rebajan ingredientes y se aumenta el producto terminado. La producción directa del gerente se conserva.",
+  descuentos:
+    "El gerente autoriza desde Inventario por sucursal. Dura 12 horas y tiene una cantidad máxima. No cambia el precio normal. Al vender, marca Aplicar descuento autorizado.",
   productos:
     "Disponible = existencia en producción menos unidades reservadas por pedidos. El stock se valida nuevamente al guardar.",
   pedidos:
@@ -309,6 +316,7 @@ async function abrir(m) {
     b.classList.toggle("activo", b.textContent === nombres[m]);
   const alta = {
     pedidos: "Nuevo pedido",
+    solicitudes_produccion: "Solicitar producción",
     producciones: "Registrar producción",
     movimientos: "Registrar entrada",
     productos: "Agregar producto",
@@ -343,6 +351,34 @@ async function abrir(m) {
 }
 // Encabezados y valores que se mostrarán en cada tabla.
 const cols = {
+  solicitudes_produccion: [
+    ["Fecha", (x) => hora(x.creado)],
+    ["Producto", (x) => x.productoNombre],
+    ["Cantidad", (x) => x.cantidad],
+    ["Estado", (x) => x.estado],
+    ["Comentarios", (x) => x.comentarios],
+    ["Autorizó", (x) => nombre("usuarios", x.autorizadoPor)],
+    ["Lote finalizado", (x) => x.loteId || ""],
+  ],
+  descuentos: [
+    ["Sucursal", (x) => nombre("sucursales", x.sucursalId)],
+    ["Producto", (x) => nombre("productos", x.productoId)],
+    ["Precio con descuento", (x) => quetzales(x.precioUnitarioCentavos)],
+    ["Unidades restantes", (x) => x.restante],
+    ["Vence", (x) => hora(x.vigenteHasta)],
+    [
+      "Estado",
+      (x) =>
+        !x.activo
+          ? "Cancelado"
+          : new Date(x.vigenteHasta) <= new Date()
+            ? "Vencido"
+            : x.restante <= 0
+              ? "Agotado"
+              : "Vigente",
+    ],
+    ["Motivo", (x) => x.motivo],
+  ],
   productos: [
     ["Código", (x) => x.codigo],
     ["Producto", (x) => x.nombre],
@@ -380,6 +416,7 @@ const cols = {
     ["Origen", (x) => x.origenNombre || "Producción central"],
     ["Recibir el", (x) => x.fechaEntrega],
     ["Estado", (x) => x.estado],
+    ["Autorización", (x) => x.autorizacion || "Registro anterior"],
     [
       "Productos",
       (x) =>
@@ -637,10 +674,44 @@ function metricas(list) {
   }
 }
 function acciones(x, td) {
+  if (modulo === "solicitudes_produccion" && gerente()) {
+    if (x.estado === "PENDIENTE")
+      boton(
+        "Autorizar",
+        () => confirmarComplemento("autorizarProduccion", x),
+        td,
+      );
+    if (x.estado === "APROBADA")
+      boton(
+        "Finalizar producción",
+        () => confirmarComplemento("finalizarSolicitudProduccion", x),
+        td,
+      );
+    if (["PENDIENTE", "APROBADA"].includes(x.estado))
+      boton(
+        "Cancelar solicitud",
+        () => confirmarComplemento("cancelarSolicitudProduccion", x),
+        td,
+      );
+  }
+  if (modulo === "descuentos" && gerente() && x.activo)
+    boton(
+      "Cancelar descuento",
+      () => confirmarComplemento("cancelarDescuento", x),
+      td,
+    );
+  if (modulo === "inventario_sucursales" && gerente())
+    boton("Autorizar descuento", () => formulario("autorizarDescuento", x), td);
   if (modulo === "pedidos") {
     const propio = gerente() || x.sucursalId === perfil.sucursalId,
       origen = gerente() || x.origenId === perfil.sucursalId;
     if (x.estado === "PENDIENTE") {
+      if (gerente() && x.autorizacion !== "APROBADA")
+        boton(
+          "Autorizar pedido",
+          () => confirmarComplemento("autorizarPedido", x),
+          td,
+        );
       if (propio) {
         boton(
           "Modificar",
@@ -831,6 +902,8 @@ function formulario(a, x = null) {
     despachar: "Despachar pedido",
     reasignar: "Asignar otra unidad",
     incidencia: "Reportar problema",
+    solicitarProduccion: "Solicitar producción",
+    autorizarDescuento: "Autorizar descuento por 12 horas",
     producir: "Registrar producción",
     entrada: "Registrar entrada",
     guardarCatalogo: (x ? "Modificar " : "Agregar ") + (nombres[modulo] || ""),
@@ -908,8 +981,8 @@ function formulario(a, x = null) {
     $("agregar").hidden = false;
     (x?.detalles || [{}]).forEach(detalle);
   }
-  if (["producir", "entrada"].includes(a)) {
-    const c = a === "producir" ? "productos" : "ingredientes";
+  if (["producir", "entrada", "solicitarProduccion"].includes(a)) {
+    const c = a !== "entrada" ? "productos" : "ingredientes";
     const ps = (catalogos[c] || []).filter(
       (p) =>
         a !== "producir" ||
@@ -919,14 +992,14 @@ function formulario(a, x = null) {
     );
     const s = campo(
       "articulo",
-      a === "producir" ? "Producto" : "Ingrediente",
+      a !== "entrada" ? "Producto" : "Ingrediente",
       "text",
       ps,
       x?.id,
     );
     const q = campo(
       "cantidad",
-      a === "producir" ? "Unidades a producir" : "Cantidad recibida",
+      a !== "entrada" ? "Unidades a producir" : "Cantidad recibida",
       "number",
     );
     if (a === "producir") {
@@ -951,6 +1024,36 @@ function formulario(a, x = null) {
       vistaConsumo();
     }
   }
+  if (a === "solicitarProduccion") {
+    const comentario = campo(
+      "comentarios-produccion",
+      "Comentarios",
+      "textarea",
+    );
+    comentario.required = false;
+    nodo(
+      "p",
+      "Solicitar no consume ingredientes. Autoriza y después finaliza desde Solicitudes de producción.",
+      $("campos"),
+    );
+  }
+  if (a === "autorizarDescuento") {
+    nodo("p", x.sucursalNombre + " · " + x.productoNombre, $("campos"));
+    campo("cantidad", "Unidades aptas incluidas", "number");
+    const precio = campo(
+      "precio-descuento",
+      "Precio por unidad en quetzales",
+      "number",
+    );
+    precio.min = "0";
+    campo("motivo", "Motivo del descuento", "textarea");
+    const label = nodo("label", undefined, $("campos")),
+      check = nodo("input", undefined, label);
+    check.type = "checkbox";
+    check.id = "apto-descuento";
+    check.required = true;
+    nodo("span", "Confirmo que el producto es apto para venta", label);
+  }
   if (["despachar", "reasignar"].includes(a)) {
     if (gerente())
       campo(
@@ -974,6 +1077,15 @@ function formulario(a, x = null) {
         { id: "venta", nombre: "Venta (genera ingreso)" },
         { id: "salida", nombre: "Salida sin venta (merma, consumo u otro)" },
       ]);
+      const labelDescuento = nodo("label", undefined, $("campos")),
+        checkDescuento = nodo("input", undefined, labelDescuento);
+      checkDescuento.type = "checkbox";
+      checkDescuento.id = "usar-descuento";
+      nodo(
+        "span",
+        "Aplicar descuento autorizado (consultar vigencia en Descuentos)",
+        labelDescuento,
+      );
       const producto = catalogos.productos.find((p) => p.id === x.productoId);
       nodo(
         "p",
@@ -1173,9 +1285,19 @@ $("registro").onsubmit = async (e) => {
       if (!a.detalles.length) throw Error("Agrega al menos un producto.");
       if (accion === "modificarPedido") a.pedidoId = registroId;
     }
-    if (["producir", "entrada"].includes(accion)) {
-      a[accion === "producir" ? "productoId" : "ingredienteId"] = v("articulo");
+    if (["producir", "entrada", "solicitarProduccion"].includes(accion)) {
+      a[accion !== "entrada" ? "productoId" : "ingredienteId"] = v("articulo");
+      if (accion === "solicitarProduccion")
+        a.comentarios = v("comentarios-produccion");
       a.cantidad = n("cantidad");
+    }
+    if (accion === "autorizarDescuento") {
+      a.sucursalId = editing.sucursalId;
+      a.productoId = editing.productoId;
+      a.cantidad = n("cantidad");
+      a.precioVenta = n("precio-descuento");
+      a.motivo = v("motivo");
+      a.apto = $("apto-descuento").checked;
     }
     if (["despachar", "reasignar", "incidencia"].includes(accion)) {
       a.pedidoId = registroId;
@@ -1192,6 +1314,7 @@ $("registro").onsubmit = async (e) => {
       a.motivo = v("motivo");
       if (accion === "ventaSucursal") {
         a.tipoMovimiento = v("tipo-movimiento");
+        a.usarDescuento = $("usar-descuento").checked;
         if ($("venta-prueba")) a.esPrueba = $("venta-prueba").checked;
       }
       a[accion === "ventaSucursal" ? "cantidad" : "existencia"] = n("cantidad");
@@ -1250,19 +1373,36 @@ async function eliminarCatalogo(p) {
   )
     await enviar({ accion: "desactivarCatalogo", coleccion: modulo, id: p.id });
 }
+async function confirmarComplemento(accion, x) {
+  if (!confirm("¿Confirmar esta operación? El historial se conservará."))
+    return;
+  const a = { accion };
+  if (accion === "autorizarPedido") a.pedidoId = x.id;
+  else if (accion === "cancelarDescuento") {
+    a.sucursalId = x.sucursalId;
+    a.productoId = x.productoId;
+  } else a.produccionId = x.id;
+  if (accion === "cancelarSolicitudProduccion") {
+    a.motivo = prompt("Motivo de cancelación");
+    if (!a.motivo?.trim()) return;
+  }
+  await enviar(a);
+}
 async function confirmarEntrega(p) {
   if (confirm("¿Confirmas que " + numero(p) + " fue recibido por la sucursal?"))
     await enviar({ accion: "entregar", pedidoId: p.id });
 }
 $("nuevo").onclick = () =>
   formulario(
-    modulo === "pedidos"
-      ? "crearPedido"
-      : modulo === "producciones"
-        ? "producir"
-        : modulo === "movimientos"
-          ? "entrada"
-          : "guardarCatalogo",
+    modulo === "solicitudes_produccion"
+      ? "solicitarProduccion"
+      : modulo === "pedidos"
+        ? "crearPedido"
+        : modulo === "producciones"
+          ? "producir"
+          : modulo === "movimientos"
+            ? "entrada"
+            : "guardarCatalogo",
   );
 $("agregar").onclick = () => detalle();
 $("cancelar").onclick = $("cerrar-form").onclick = () => {

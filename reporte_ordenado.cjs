@@ -2,6 +2,9 @@
 const d = require("./domain"),
   { todos } = require("./consultas.cjs");
 const CATEGORIAS = {
+  autorizaciones: "Autorizaciones de pedidos",
+  solicitudes_produccion: "Solicitudes y autorizaciones de producción",
+  descuentos: "Autorizaciones de descuentos",
   pedidos: "Pedidos",
   programados: "Programados",
   entregas: "Entregas",
@@ -107,6 +110,8 @@ async function generarReporte(db, uid, fecha, tipo = "todo") {
     "incidencias",
     "notificaciones",
     "salidas_sucursales",
+    "auditoria_complementos",
+    "solicitudes_produccion",
     "auditoria_catalogos",
   ];
   const lists = await Promise.all(cs.map((c) => todos(db, c))),
@@ -177,6 +182,7 @@ async function generarReporte(db, uid, fecha, tipo = "todo") {
       });
   }
   const cats = {
+    autorizarPedido: "autorizaciones",
     crearPedido: "pedidos",
     modificarPedido: "modificaciones",
     cancelarPedido: "cancelaciones",
@@ -323,6 +329,31 @@ async function generarReporte(db, uid, fecha, tipo = "todo") {
           comentarios: c.coleccion + "/" + c.registroId,
         },
       );
+  for (const c of data.auditoria_complementos) {
+    if (!dentro(c.creado)) continue;
+    const x = c.datos || {},
+      solicitud = data.solicitudes_produccion.find(
+        (p) => p.id === (x.produccionId || c.produccionId),
+      );
+    fila(
+      c.accion.includes("Descuento") ? "descuentos" : "solicitudes_produccion",
+      c.creado,
+      { sucursalId: c.sucursalId },
+      {
+        productoId: c.productoId || x.productoId || solicitud?.productoId,
+        precioUnitarioCentavos:
+          x.precioVenta == null ? null : Math.round(x.precioVenta * 100),
+      },
+      {
+        actividad: c.accion,
+        status: c.accion.startsWith("cancelar") ? "C" : "O",
+        cantidad: x.cantidad || solicitud?.cantidad || "",
+        comentarios: x.motivo || x.comentarios || "",
+        uid: c.usuarioUid,
+        audit: c.id,
+      },
+    );
+  }
   const selected = rows.filter(
     (x) =>
       tipo === "todo" ||

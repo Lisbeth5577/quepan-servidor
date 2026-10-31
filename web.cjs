@@ -101,6 +101,8 @@ function conWeb(
             }, 200);
         };
         for (const c of [
+          "descuentos",
+          "solicitudes_produccion",
           "productos",
           "inventario_sucursales",
           "pedidos",

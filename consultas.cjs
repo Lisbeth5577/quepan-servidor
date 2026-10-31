@@ -9,6 +9,8 @@ const serial = (v) =>
         ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, serial(x)]))
         : v;
 const listas = [
+  "descuentos",
+  "solicitudes_produccion",
   "productos",
   "ingredientes",
   "recetas",
@@ -48,6 +50,7 @@ async function consultar(db, uid, modulo) {
   d.exigir(
     gerente ||
       [
+        "descuentos",
         "productos",
         "sucursales",
         "pedidos",
@@ -60,6 +63,8 @@ async function consultar(db, uid, modulo) {
     "permission-denied",
   );
   let rows = await todos(db, modulo);
+  if (modulo === "descuentos" && !gerente)
+    rows = rows.filter((x) => x.sucursalId === u.sucursalId);
   if (modulo === "pedidos")
     rows = rows.filter(
       (x) =>

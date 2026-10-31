@@ -43,7 +43,7 @@ function fecha(v) {
   );
   return x;
 }
-function crearNegocio(db) {
+function crearNegocio(db, { reloj = () => new Date() } = {}) {
   const ref = (c, id) => db.collection(c).doc(d.id(id));
   return async (request) => {
     d.exigir(request.auth?.uid, "Inicia sesión", "unauthenticated");
@@ -194,7 +194,146 @@ function crearNegocio(db) {
         }
         return out;
       }
-      if (["crearPedido", "modificarPedido"].includes(action)) {
+      // Complementos del paquete integrado. No reemplazan los movimientos existentes.
+      if (
+        [
+          "solicitarProduccion",
+          "autorizarProduccion",
+          "cancelarSolicitudProduccion",
+        ].includes(action)
+      ) {
+        gerente();
+        if (action === "solicitarProduccion") {
+          const pid = d.id(a.productoId),
+            p = await leer("productos", pid),
+            rec = await leer("recetas", pid);
+          d.exigir(
+            p?.activo && rec?.activo !== false && rec,
+            "Producto sin receta activa",
+          );
+          const cantidad = d.centavos(a.cantidad) / 100;
+          d.consumo(rec, cantidad); // Valida rendimiento y precisión antes de solicitar.
+          crear("solicitudes_produccion", key, {
+            productoId: pid,
+            productoNombre: p.nombre,
+            cantidad,
+            estado: "PENDIENTE",
+            comentarios: opcional(a.comentarios),
+            solicitadoPor: uid,
+            creado: stamp(),
+          });
+          result = {
+            id: key,
+            mensaje:
+              "Solicitud de producción registrada. Todavía no cambia el inventario.",
+          };
+        } else {
+          const id = d.id(a.produccionId),
+            p = await leer("solicitudes_produccion", id);
+          d.exigir(p, "Solicitud inexistente");
+          d.exigir(
+            action === "autorizarProduccion"
+              ? p.estado === "PENDIENTE"
+              : ["PENDIENTE", "APROBADA"].includes(p.estado),
+            "Estado de solicitud no válido",
+          );
+          poner(
+            "solicitudes_produccion",
+            id,
+            action === "autorizarProduccion"
+              ? { estado: "APROBADA", autorizadoPor: uid, autorizado: stamp() }
+              : {
+                  estado: "CANCELADA",
+                  canceladoPor: uid,
+                  cancelado: stamp(),
+                  motivo: d.texto(a.motivo, 300),
+                },
+          );
+          result = {
+            id,
+            mensaje:
+              action === "autorizarProduccion"
+                ? "Producción autorizada; pendiente de finalizar"
+                : "Solicitud cancelada; historial conservado",
+          };
+        }
+      } else if (["autorizarDescuento", "cancelarDescuento"].includes(action)) {
+        gerente();
+        const branch = d.id(a.sucursalId),
+          pid = d.id(a.productoId),
+          id = branch + "_" + pid;
+        await sucursalActiva(branch);
+        const p = await leer("productos", pid),
+          prev = await leer("descuentos", id);
+        if (action === "cancelarDescuento") {
+          d.exigir(prev?.activo, "Descuento inactivo o inexistente");
+          poner("descuentos", id, {
+            activo: false,
+            canceladoPor: uid,
+            cancelado: stamp(),
+          });
+        } else {
+          d.exigir(p?.activo, "Producto inactivo");
+          d.exigir(
+            a.apto === true,
+            "Confirma que el producto es apto para venta",
+          );
+          const normal = dinero.precio(p.precioVenta),
+            precio = dinero.precio(a.precioVenta);
+          d.exigir(
+            normal !== null && precio !== null && precio < normal,
+            "El descuento debe ser menor al precio normal registrado",
+          );
+          const cantidad = d.centavos(a.cantidad) / 100,
+            s = await stock(branch, pid);
+          d.exigir(
+            cantidad <= (s.x.existencia || 0) - (s.x.reservado || 0),
+            "Descuento superior al stock disponible",
+          );
+          const ahora = reloj();
+          d.exigir(
+            !prev?.activo ||
+              new Date(prev.vigenteHasta) <= ahora ||
+              prev.restante === 0,
+            "Cancela el descuento vigente antes de reemplazarlo",
+          );
+          poner(
+            "descuentos",
+            id,
+            {
+              sucursalId: branch,
+              productoId: pid,
+              precioUnitarioCentavos: precio,
+              precioNormalCentavos: normal,
+              cantidad,
+              restante: cantidad,
+              activo: true,
+              apto: true,
+              motivo: d.texto(a.motivo, 300),
+              autorizadoPor: uid,
+              creado: stamp(),
+              vigenteHasta: new Date(+ahora + 12 * 3600000).toISOString(),
+            },
+            false,
+          );
+        }
+        crear("auditoria_complementos", key, {
+          accion: action,
+          sucursalId: branch,
+          productoId: pid,
+          datos: a,
+          anterior: prev,
+          usuarioUid: uid,
+          creado: stamp(),
+        });
+        result = {
+          id,
+          mensaje:
+            action === "autorizarDescuento"
+              ? "Descuento autorizado por 12 horas"
+              : "Descuento cancelado",
+        };
+      } else if (["crearPedido", "modificarPedido"].includes(action)) {
         if (action === "modificarPedido") {
           pedidoId = d.id(a.pedidoId);
           antes = await leer("pedidos", pedidoId);
@@ -273,6 +412,10 @@ function crearNegocio(db) {
           solicitanteUid: antes?.solicitanteUid || uid,
           fechaEntrega: date,
           comentarios,
+          // Autorizar no despacha ni vuelve a reservar. Editar exige revisar la nueva versión.
+          autorizacion: "PENDIENTE",
+          autorizadoPor: null,
+          autorizado: null,
           detalles: lines,
           ...dinero.sumar(lines),
           estado: "PENDIENTE",
@@ -292,6 +435,7 @@ function crearNegocio(db) {
       } else if (
         [
           "cancelarPedido",
+          "autorizarPedido",
           "despachar",
           "entregar",
           "incidencia",
@@ -303,7 +447,19 @@ function crearNegocio(db) {
         d.exigir(antes, "Pedido inexistente");
         despues = { ...antes };
         delete despues.id;
-        if (action === "cancelarPedido") {
+        if (action === "autorizarPedido") {
+          gerente();
+          d.exigir(
+            antes.estado === "PENDIENTE",
+            "Solo se autoriza un pedido pendiente",
+          );
+          d.exigir(antes.autorizacion !== "APROBADA", "Pedido ya autorizado");
+          Object.assign(despues, {
+            autorizacion: "APROBADA",
+            autorizadoPor: uid,
+            autorizado: stamp(),
+          });
+        } else if (action === "cancelarPedido") {
           sucursalPropia(antes.sucursalId);
           d.exigir(
             antes.estado === "PENDIENTE",
@@ -364,6 +520,9 @@ function crearNegocio(db) {
             unidad,
             ruta,
             despachado: stamp(),
+            autorizacion: "APROBADA",
+            autorizadoPor: antes.autorizadoPor || uid,
+            autorizado: antes.autorizado || stamp(),
           });
         } else if (action === "entregar") {
           d.autor(u, uid, antes);
@@ -471,8 +630,38 @@ function crearNegocio(db) {
           action !== "ventaSucursal" || tipoMovimiento !== "conteo",
           "Usa la opción de conteo físico",
         );
-        const precioUnitarioCentavos =
+        let precioUnitarioCentavos =
           tipoMovimiento === "venta" ? dinero.precio(p.precioVenta) : null;
+        let descuentoId = null;
+        if (a.usarDescuento !== undefined)
+          d.exigir(
+            typeof a.usarDescuento === "boolean",
+            "Descuento no válido",
+            "invalid-argument",
+          );
+        if (a.usarDescuento === true) {
+          d.exigir(
+            tipoMovimiento === "venta",
+            "El descuento solo aplica a ventas",
+          );
+          descuentoId = branch + "_" + pid;
+          const descuento = await leer("descuentos", descuentoId);
+          d.exigir(
+            descuento?.activo &&
+              descuento.apto &&
+              new Date(descuento.vigenteHasta) > reloj(),
+            "Descuento inexistente o vencido",
+          );
+          d.exigir(
+            descuento.restante >= a.cantidad,
+            "Cantidad superior al descuento disponible",
+          );
+          precioUnitarioCentavos = descuento.precioUnitarioCentavos;
+          poner("descuentos", descuentoId, {
+            restante: red(descuento.restante - a.cantidad),
+            actualizado: stamp(),
+          });
+        }
         if (tipoMovimiento === "venta")
           d.exigir(
             precioUnitarioCentavos !== null,
@@ -491,6 +680,7 @@ function crearNegocio(db) {
           tipoMovimiento,
           esPrueba: a.esPrueba === true,
           precioUnitarioCentavos,
+          descuentoId,
           importeCentavos:
             tipoMovimiento === "venta"
               ? dinero.importe(a.cantidad, precioUnitarioCentavos)
@@ -726,16 +916,30 @@ function crearNegocio(db) {
           creado: stamp(),
         });
         result = { id: key, mensaje: "Entrada registrada" };
-      } else if (action === "producir") {
+      } else if (
+        ["producir", "finalizarSolicitudProduccion"].includes(action)
+      ) {
         gerente();
-        const id = d.id(a.productoId),
+        const sid =
+          action === "finalizarSolicitudProduccion"
+            ? d.id(a.produccionId)
+            : null;
+        const solicitud = sid
+          ? await leer("solicitudes_produccion", sid)
+          : null;
+        if (sid)
+          d.exigir(
+            solicitud?.estado === "APROBADA",
+            "La solicitud debe estar aprobada y sin finalizar",
+          );
+        const id = d.id(solicitud?.productoId || a.productoId),
           p = await leer("productos", id),
           rec = await leer("recetas", id);
         d.exigir(
           p?.activo && rec && rec.activo !== false,
           "Producto sin receta activa",
         );
-        const amount = d.centavos(a.cantidad) / 100,
+        const amount = d.centavos(solicitud?.cantidad || a.cantidad) / 100,
           items = d.consumo(rec, amount),
           changes = [];
         for (const l of items) {
@@ -762,7 +966,16 @@ function crearNegocio(db) {
           poner("ingredientes", iid, { existencia }),
         );
         poner("productos", id, { existencia: total });
+        if (sid)
+          poner("solicitudes_produccion", sid, {
+            estado: "FINALIZADA",
+            finalizado: stamp(),
+            finalizadoPor: uid,
+            loteId: key,
+          });
         crear("producciones", key, {
+          solicitudProduccionId: sid,
+          autorizadoPor: solicitud?.autorizadoPor || uid,
           productoId: id,
           cantidad: amount,
           consumos: items,
@@ -780,6 +993,21 @@ function crearNegocio(db) {
         result = { id: key, mensaje: "Producción finalizada" };
       } else
         throw new d.ErrorNegocio("Acción no permitida", "invalid-argument");
+      if (
+        [
+          "solicitarProduccion",
+          "autorizarProduccion",
+          "cancelarSolicitudProduccion",
+          "finalizarSolicitudProduccion",
+        ].includes(action)
+      )
+        crear("auditoria_complementos", key, {
+          accion: action,
+          produccionId: result.id,
+          datos: a,
+          usuarioUid: uid,
+          creado: stamp(),
+        });
       if (pedidoId)
         crear("historial_pedidos", key, {
           pedidoId,
