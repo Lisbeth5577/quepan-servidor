@@ -56,7 +56,9 @@ function detalles(rows) {
 }
 function perfil(p) {
   exigir(
-    p && p.activo === true && ["GERENTE", "VENDEDOR"].includes(p.rol),
+    p &&
+      p.activo === true &&
+      ["GERENTE", "VENDEDOR", "REPARTIDOR"].includes(p.rol),
     "Usuario sin permiso",
     "permission-denied",
   );
@@ -73,8 +75,11 @@ function gerente(p) {
 function autor(p, uid, pedido) {
   perfil(p);
   exigir(
-    p.rol === "GERENTE" || pedido.vendedorUid === uid,
-    "El pedido pertenece a otro vendedor",
+    p.rol === "GERENTE" ||
+      (pedido.repartidorUid
+        ? p.rol === "REPARTIDOR" && pedido.repartidorUid === uid
+        : p.rol === "VENDEDOR" && pedido.vendedorUid === uid),
+    "El pedido no está asignado a tu acceso",
     "permission-denied",
   );
 }

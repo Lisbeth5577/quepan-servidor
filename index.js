@@ -104,6 +104,7 @@ exports.enviarAviso = onDocumentCreated(
       fallos = 0;
     for (const user of users.docs) {
       if (!user.data().activo) continue;
+      if (n.destinatarioUid && user.id !== n.destinatarioUid) continue;
       if (
         n.tipo === "STOCK_SUCURSAL"
           ? user.data().rol !== "GERENTE" &&

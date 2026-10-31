@@ -29,7 +29,7 @@ const nombres = {
   recetas: "Recetas",
   movimientos: "Entradas",
   sucursales: "Sucursales",
-  usuarios: "Vendedores",
+  usuarios: "Personal",
   incidencias: "Incidencias de ruta",
   reportes: "Reportes diarios",
   alertas: "Alertas de producción",
@@ -47,6 +47,7 @@ function precioCatalogo(valor) {
     : quetzales(Math.round(valor * 100));
 }
 const gerente = () => perfil?.rol === "GERENTE";
+const repartidor = () => perfil?.rol === "REPARTIDOR";
 const hoy = () =>
   new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Guatemala",
@@ -171,21 +172,25 @@ $("login").onsubmit = async (e) => {
     for (const [m, s] of Object.entries(nombres))
       if (
         gerente() ||
-        [
-          "descuentos",
-          "productos",
-          "pedidos",
-          "inventario_sucursales",
-          "salidas_sucursales",
-          "sucursales",
-          "incidencias",
-          "reportes",
-        ].includes(m)
+        (repartidor()
+          ? ["pedidos", "incidencias"].includes(m)
+          : [
+              "descuentos",
+              "productos",
+              "pedidos",
+              "inventario_sucursales",
+              "salidas_sucursales",
+              "sucursales",
+              "incidencias",
+              "reportes",
+            ].includes(m))
       )
         boton(s, () => abrir(m), $("modulos"));
     $("avisos").hidden = !window.QuePanAndroid;
     await cargarCatalogos();
-    await abrir(gerente() ? "dashboard" : "productos");
+    await abrir(
+      gerente() ? "dashboard" : repartidor() ? "pedidos" : "productos",
+    );
     conectar();
   } catch (err) {
     sesion = null;
@@ -214,7 +219,7 @@ async function cargarCatalogos() {
   const cs = [
     "productos",
     "sucursales",
-    "inventario_sucursales",
+    ...(!repartidor() ? ["inventario_sucursales"] : []),
     ...(gerente() ? ["ingredientes", "usuarios", "recetas"] : []),
   ];
   await Promise.all(
@@ -309,7 +314,8 @@ async function abrir(m) {
     recetas: "Agregar receta",
     sucursales: "Agregar sucursal",
   };
-  $("nuevo").hidden = !(alta[m] && (m === "pedidos" || gerente()));
+  $("nuevo").hidden =
+    repartidor() || !(alta[m] && (m === "pedidos" || gerente()));
   $("nuevo").textContent = alta[m] || "";
   if (m === "dashboard") {
     await Dashboard.cargar();
@@ -414,6 +420,7 @@ const cols = {
           )
           .join("\n"),
     ],
+    ["Repartidor", (x) => x.repartidorNombre || "Sin asignar"],
     ["Ruta / unidad", (x) => [x.ruta, x.unidad].filter(Boolean).join(" / ")],
     ["Comentarios", (x) => x.comentarios || ""],
     ["Registrado", (x) => hora(x.creado)],
@@ -685,8 +692,9 @@ function acciones(x, td) {
   if (modulo === "inventario_sucursales" && gerente())
     boton("Autorizar descuento", () => formulario("autorizarDescuento", x), td);
   if (modulo === "pedidos") {
-    const propio = gerente() || x.sucursalId === perfil.sucursalId,
-      origen = gerente() || x.origenId === perfil.sucursalId;
+    const propio =
+        !repartidor() && (gerente() || x.sucursalId === perfil.sucursalId),
+      origen = !repartidor() && (gerente() || x.origenId === perfil.sucursalId);
     if (x.estado === "PENDIENTE") {
       if (gerente() && x.autorizacion !== "APROBADA")
         boton(
@@ -707,7 +715,13 @@ function acciones(x, td) {
     }
     if (x.estado === "INCIDENCIA" && gerente())
       boton("Asignar otra unidad", () => formulario("reasignar", x), td);
-    if (x.estado === "EN_RUTA" && (gerente() || x.vendedorUid === perfil.uid)) {
+    if (
+      x.estado === "EN_RUTA" &&
+      (gerente() ||
+        (x.repartidorUid
+          ? repartidor() && x.repartidorUid === perfil.uid
+          : x.vendedorUid === perfil.uid))
+    ) {
       boton("Confirmar entrega", () => confirmarEntrega(x), td);
       boton(
         "Reportar problema",
@@ -1034,6 +1048,16 @@ function formulario(a, x = null) {
   if (["despachar", "reasignar"].includes(a)) {
     if (gerente())
       campo(
+        "repartidor",
+        "Repartidor",
+        "text",
+        (catalogos.usuarios || []).filter(
+          (v) => v.activo && v.rol === "REPARTIDOR",
+        ),
+        x.repartidorUid,
+      );
+    if (gerente())
+      campo(
         "vendedor",
         "Vendedor de destino",
         "text",
@@ -1281,6 +1305,7 @@ $("registro").onsubmit = async (e) => {
       if (accion === "incidencia") a.detalle = v("problema");
       else {
         a.vendedorUid = $("vendedor") ? v("vendedor") : editing.vendedorUid;
+        if ($("repartidor")) a.repartidorUid = v("repartidor");
         a.unidad = v("unidad");
         if (accion === "despachar") a.ruta = v("ruta");
       }

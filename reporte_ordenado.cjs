@@ -87,11 +87,17 @@ const TITULOS = [
   "Moneda",
   "Tipo de salida",
   "Registro real o prueba",
+  "Repartidor asignado",
 ];
 async function generarReporte(db, uid, fecha, tipo = "todo") {
   d.exigir(uid, "Inicia sesión", "unauthenticated");
   const u = (await db.doc("usuarios/" + uid).get()).data();
   d.perfil(u);
+  d.exigir(
+    u.rol !== "REPARTIDOR",
+    "Los reportes corresponden al gerente y a las sucursales",
+    "permission-denied",
+  );
   limites(fecha);
   d.exigir(
     tipo === "todo" || CATEGORIAS[tipo],
@@ -169,6 +175,7 @@ async function generarReporte(db, uid, fecha, tipo = "todo") {
       p.esPrueba === true || l.esPrueba === true
         ? "Prueba"
         : "Real o histórico sin clasificar",
+      p.repartidorNombre || usuarios.get(p.repartidorUid)?.nombre || "",
     ];
     rows.push({ cat, row });
   }

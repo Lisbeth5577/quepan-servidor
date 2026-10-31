@@ -74,7 +74,7 @@ function letra(col) {
 }
 const widths = [
   14, 12, 19, 34, 26, 20, 30, 18, 18, 18, 19, 15, 30, 14, 19, 20, 34, 28, 20,
-  60, 26, 40, 23, 23, 12, 23, 30,
+  60, 26, 40, 23, 23, 12, 23, 30, 26,
 ];
 function celda(v, col, row) {
   const r = letra(col) + row;

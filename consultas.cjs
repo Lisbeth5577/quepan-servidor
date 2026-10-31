@@ -47,6 +47,13 @@ async function consultar(db, uid, modulo) {
   const u = (await db.doc("usuarios/" + uid).get()).data();
   d.perfil(u);
   const gerente = u.rol === "GERENTE";
+  const repartidor = u.rol === "REPARTIDOR";
+  d.exigir(
+    !repartidor ||
+      ["pedidos", "incidencias", "productos", "sucursales"].includes(modulo),
+    "El repartidor solo consulta sus entregas",
+    "permission-denied",
+  );
   d.exigir(
     gerente ||
       [
@@ -70,16 +77,25 @@ async function consultar(db, uid, modulo) {
       (x) =>
         x.status !== "C" &&
         x.estado !== "CANCELADO" &&
-        (gerente ||
-          x.sucursalId === u.sucursalId ||
-          x.origenId === u.sucursalId),
+        (repartidor
+          ? x.repartidorUid === uid
+          : gerente ||
+            x.sucursalId === u.sucursalId ||
+            x.origenId === u.sucursalId),
     );
   if (modulo === "incidencias") {
     // Las incidencias de pedidos de prueba no se muestran en la operación diaria.
-    const pruebas = new Set((await todos(db, "pedidos"))
-      .filter((x) => x.esPrueba === true).map((x) => x.id));
-    rows = rows.filter((x) => x.esPrueba !== true &&
-      !pruebas.has(x.pedidoId) && x.pedidoId !== "demo-ruta-20261019");
+    const pruebas = new Set(
+      (await todos(db, "pedidos"))
+        .filter((x) => x.esPrueba === true)
+        .map((x) => x.id),
+    );
+    rows = rows.filter(
+      (x) =>
+        x.esPrueba !== true &&
+        !pruebas.has(x.pedidoId) &&
+        x.pedidoId !== "demo-ruta-20261019",
+    );
     if (!gerente) rows = rows.filter((x) => x.vendedorUid === uid);
   }
   if (modulo === "salidas_sucursales" && !gerente)

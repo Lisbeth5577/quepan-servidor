@@ -113,6 +113,11 @@ function crearNegocio(db, { reloj = () => new Date() } = {}) {
       }
       const u = await leer("usuarios", uid);
       d.perfil(u);
+      d.exigir(
+        u.rol !== "REPARTIDOR" || ["entregar", "incidencia"].includes(action),
+        "El repartidor solo puede gestionar sus entregas",
+        "permission-denied",
+      );
       const setup = await leer("configuracion", "quepan_v2");
       d.exigir(
         setup?.lista === true,
@@ -497,6 +502,18 @@ function crearNegocio(db, { reloj = () => new Date() } = {}) {
           const unidad = d.texto(a.unidad, 60),
             ruta = d.texto(a.ruta, 80),
             changes = [];
+          if (a.repartidorUid) {
+            gerente();
+            const repartidor = await leer("usuarios", d.id(a.repartidorUid));
+            d.exigir(
+              repartidor?.activo && repartidor.rol === "REPARTIDOR",
+              "Selecciona un repartidor activo",
+            );
+            Object.assign(despues, {
+              repartidorUid: repartidor.id,
+              repartidorNombre: repartidor.nombre,
+            });
+          }
           for (const l of antes.detalles) {
             const s = await stock(antes.origenId || "PRODUCCION", l.productoId);
             const reservado = red(
@@ -550,6 +567,7 @@ function crearNegocio(db, { reloj = () => new Date() } = {}) {
             pedidoId,
             numero: antes.numero || pedidoId,
             vendedorUid: uid,
+            repartidorUid: antes.repartidorUid || null,
             detalle: d.texto(a.detalle, 500),
             estado: "ABIERTA",
             creado: stamp(),
@@ -571,11 +589,24 @@ function crearNegocio(db, { reloj = () => new Date() } = {}) {
           const i = await leer("incidencias", antes.incidenciaId);
           d.exigir(i?.estado === "ABIERTA", "Incidencia ya atendida");
           const unidad = d.texto(a.unidad, 60);
+          const repartidorId = a.repartidorUid || antes.repartidorUid;
+          if (repartidorId) {
+            const repartidor = await leer("usuarios", d.id(repartidorId));
+            d.exigir(
+              repartidor?.activo && repartidor.rol === "REPARTIDOR",
+              "Selecciona un repartidor activo",
+            );
+            Object.assign(despues, {
+              repartidorUid: repartidor.id,
+              repartidorNombre: repartidor.nombre,
+            });
+          }
           poner("incidencias", i.id, {
             estado: "REASIGNADA",
             atendidoPor: uid,
             nuevoVendedor: v.id,
             nuevaUnidad: unidad,
+            nuevoRepartidor: repartidorId || null,
             resuelto: stamp(),
           });
           Object.assign(despues, {
@@ -585,6 +616,18 @@ function crearNegocio(db, { reloj = () => new Date() } = {}) {
             reasignado: stamp(),
           });
         }
+        if (
+          ["despachar", "reasignar"].includes(action) &&
+          despues.repartidorUid
+        )
+          crear("notificaciones", "asignacion_" + key, {
+            tipo: "ASIGNACION",
+            destinatarioUid: despues.repartidorUid,
+            titulo: "Entrega asignada",
+            mensaje: "Pedido " + (antes.numero || pedidoId),
+            estado: "PENDIENTE",
+            creado: stamp(),
+          });
         poner("pedidos", pedidoId, { ...despues, actualizado: stamp() });
         result = {
           id: pedidoId,
