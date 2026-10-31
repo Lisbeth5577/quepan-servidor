@@ -97,7 +97,7 @@
             <section id="dashboard" hidden aria-label="Resumen general del sistema">
               <label class="resumen-mes">Mes<input id="dash-mes" type="month" min="2000-01" max="2099-12" required /></label>
               <p id="dash-actualizado" role="status"></p>
-              <section class="resumen-panel"><h3>Alertas recientes</h3><div id="avisos-recientes" role="region" aria-label="Alertas recientes"></div></section>
+              <section class="resumen-panel"><h3>Última alerta</h3><div id="avisos-recientes" role="region" aria-label="Última alerta"></div><button id="ver-historial-avisos" class="secondary" type="button">Ver historial de alertas</button></section>
               <div id="dash-cifras" class="resumen-tarjetas"></div>
               <section class="resumen-panel">
                 <h3>Ingresos por sucursal</h3>
@@ -211,11 +211,25 @@
                   </select></label
                 >
               </div>
+              <div id="filtros-avisos" class="filters" hidden>
+                <label>Fecha de ingreso<input id="fecha-aviso" type="date" /></label>
+                <label>Tipo de alerta<select id="tipo-aviso">
+                  <option value="">Todas</option><option value="RUTA">Ruta</option>
+                  <option value="PEDIDOS">Pedidos</option><option value="PRODUCTOS">Productos</option>
+                  <option value="MATERIA_PRIMA">Materia prima</option><option value="OTROS">Otros</option>
+                </select></label>
+                <button id="limpiar-avisos" class="secondary" type="button">Ver todas las fechas</button>
+              </div>
               <div class="table-wrap">
                 <table>
                   <thead id="columnas"></thead>
                   <tbody id="filas"></tbody>
                 </table>
+              </div>
+              <div id="paginas-avisos" class="form-actions" hidden>
+                <button id="avisos-anterior" type="button" class="secondary">Anterior</button>
+                <span id="aviso-pagina"></span>
+                <button id="avisos-siguiente" type="button" class="secondary">Siguiente</button>
               </div>
               <p id="resumen" class="nota"></p>
             </section>

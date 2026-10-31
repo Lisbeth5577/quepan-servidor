@@ -353,3 +353,10 @@ header::after { content: ""; display: block; clear: both; }
 .aviso-reciente small { color: #635b50; }
 @keyframes aparecer-aviso { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .aviso-emergente { animation: none; } }
+
+.pedido-producto { display: grid; grid-template-columns: minmax(180px, 1fr) 110px; gap: 6px 12px; border: 1px solid #d6d9cc; padding: 10px; margin-bottom: 8px; background: #fffdf8; }
+.pedido-producto label { display: flex; flex-direction: row; align-items: center; gap: 10px; margin: 0; }
+.pedido-producto input[type=checkbox] { width: 19px; height: 19px; flex-shrink: 0; }
+.pedido-producto small { grid-column: 1 / -1; color: #635b50; }
+.pedido-producto.seleccionado { border-left: 4px solid #49634f; background: #edf2eb; }
+@media (max-width: 480px) { .pedido-producto { grid-template-columns: minmax(0, 1fr) 85px; } }

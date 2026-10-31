@@ -320,6 +320,9 @@ async function abrir(m) {
   $("reporte").hidden = m !== "reportes";
   $("tabla").hidden = ["reportes", "dashboard"].includes(m);
   $("dashboard").hidden = m !== "dashboard";
+  $("filtros-avisos").hidden = m !== "notificaciones";
+  $("paginas-avisos").hidden = m !== "notificaciones";
+  paginaAvisos = 1;
   $("buscar").value = "";
   $("indicadores").replaceChildren();
   for (const b of $("modulos").children)
@@ -665,9 +668,27 @@ function prepararFiltros() {
   if (modulo === "inventario_sucursales" && !gerente())
     $("f-sucursal").value = perfil.sucursalId;
 }
+let paginaAvisos = 1;
+const TAMANO_PAGINA_AVISOS = 50;
+function tipoAviso(aviso) {
+  const tipo = String(aviso.tipo || "").toUpperCase();
+  if (/MATERIA|INGREDIENT/.test(tipo) || aviso.ingredienteId) return "MATERIA_PRIMA";
+  if (/INCIDENCIA|RUTA|ASIGNACION|DESPACHO|ENTREGA/.test(tipo)) return "RUTA";
+  if (/PEDIDO|SOLICITUD/.test(tipo)) return "PEDIDOS";
+  if (/STOCK|PRODUCTO|EXISTENCIA/.test(tipo)) return "PRODUCTOS";
+  return "OTROS";
+}
+function fechaAviso(aviso) {
+  const fecha = new Date(aviso.creado);
+  if (!Number.isFinite(+fecha)) return "";
+  return new Intl.DateTimeFormat("en-CA", {timeZone:"America/Guatemala",year:"numeric",month:"2-digit",day:"2-digit"}).format(fecha);
+}
+function coincideAviso(aviso, fecha, tipo) {
+  return (!fecha || fechaAviso(aviso) === fecha) && (!tipo || tipoAviso(aviso) === tipo);
+}
 // Recorre los datos y construye las filas de la tabla.
 function pintar() {
-  const cs = repartidor() ? columnasReparto[modulo] : cols[modulo];
+  const cs = repartidor() && modulo !== "notificaciones" ? columnasReparto[modulo] : cols[modulo];
   if (!cs) return;
   const q = $("buscar").value.toLocaleLowerCase(),
     s = $("f-sucursal").value,
@@ -684,6 +705,7 @@ function pintar() {
         x.detalles?.some((l) => l.productoId === p)) &&
       (!r || x.ruta === r) &&
       (!e || x.estado === e) &&
+      (modulo !== "notificaciones" || coincideAviso(x, $("fecha-aviso").value, $("tipo-aviso").value)) &&
       cs
         .map((c) => c[1](x))
         .join(" ")
@@ -704,7 +726,16 @@ function pintar() {
   const tr = nodo("tr", undefined, $("columnas"));
   cs.forEach((c) => nodo("th", c[0], tr));
   nodo("th", "Acciones", tr);
-  for (const x of list) {
+  let visibles = list;
+  if (modulo === "notificaciones") {
+    const paginas = Math.max(1, Math.ceil(list.length / TAMANO_PAGINA_AVISOS));
+    paginaAvisos = Math.min(paginaAvisos, paginas);
+    visibles = list.slice((paginaAvisos - 1) * TAMANO_PAGINA_AVISOS, paginaAvisos * TAMANO_PAGINA_AVISOS);
+    $("aviso-pagina").textContent = "Página " + paginaAvisos + " de " + paginas;
+    $("avisos-anterior").disabled = paginaAvisos <= 1;
+    $("avisos-siguiente").disabled = paginaAvisos >= paginas;
+  }
+  for (const x of visibles) {
     const tr = nodo("tr", undefined, $("filas"));
     cs.forEach(([name, fn]) => {
       const td = nodo("td", undefined, tr);
@@ -957,6 +988,32 @@ function detalle(l = {}) {
   sel.onchange = actualizarLimites;
   actualizarLimites();
 }
+// Cada casilla agrega un producto distinto al mismo pedido.
+function detallePedido(producto, anterior) {
+  const fila = nodo("div", undefined, $("detalles"));
+  fila.className = "pedido-producto";
+  const etiqueta = nodo("label", undefined, fila);
+  const elegir = nodo("input", undefined, etiqueta);
+  elegir.type = "checkbox";
+  elegir.checked = Boolean(anterior);
+  elegir.setAttribute("aria-label", "Agregar " + producto.nombre);
+  nodo("span", (producto.codigo || producto.id) + " · " + producto.nombre, etiqueta);
+  const selector = nodo("select", undefined, fila);
+  selector.hidden = true;
+  const opcion = nodo("option", producto.nombre, selector); opcion.value = producto.id;
+  selector.value = producto.id;
+  const cantidad = nodo("input", undefined, fila);
+  cantidad.type = "number"; cantidad.min = ".01"; cantidad.step = ".01";
+  cantidad.required = true; cantidad.value = anterior?.cantidad ?? 1;
+  cantidad.setAttribute("aria-label", "Cantidad de " + producto.nombre);
+  nodo("small", "", fila);
+  elegir.onchange = actualizarLimites;
+}
+function productosDelPedido() {
+  return [...$("detalles").children]
+    .filter(f => !f.querySelector('input[type="checkbox"]') || f.querySelector('input[type="checkbox"]').checked)
+    .map(f => ({productoId: f.querySelector("select").value, cantidad: Number(f.querySelector('input[type="number"]').value)}));
+}
 function actualizarLimites() {
   if (
     !["crearPedido", "modificarPedido"].includes(accion) ||
@@ -965,7 +1022,7 @@ function actualizarLimites() {
     return;
   for (const row of $("detalles").children) {
     const sel = row.querySelector("select"),
-      q = row.querySelector("input");
+      q = row.querySelector('input[type="number"]');
     for (const o of sel.options) {
       const p = (catalogos.productos || []).find((p) => p.id === o.value),
         n = disponible(o.value);
@@ -974,6 +1031,12 @@ function actualizarLimites() {
       o.disabled = n <= 0 && o.value !== sel.value;
     }
     const n = disponible(sel.value);
+    const casilla = row.querySelector('input[type="checkbox"]');
+    if (casilla) {
+      casilla.disabled = n <= 0 && !casilla.checked;
+      q.disabled = !casilla.checked;
+      row.classList.toggle("seleccionado", casilla.checked);
+    }
     q.max = String(n);
     q.setCustomValidity(
       Number(q.value) > n
@@ -1094,8 +1157,13 @@ function formulario(a, x = null) {
         label,
       );
     }
-    $("agregar").hidden = false;
-    (x?.detalles || [{}]).forEach(detalle);
+    $("agregar").hidden = true;
+    const productos = [...(catalogos.productos || [])];
+    for (const l of x?.detalles || []) {
+      if (!productos.some(p => p.id === l.productoId)) productos.push({id:l.productoId, codigo:l.codigo, nombre:l.nombre || l.productoId});
+    }
+    productos.forEach(p => detallePedido(p, x?.detalles?.find(l => l.productoId === p.id)));
+    actualizarLimites();
   }
   if (["producir", "entrada", "solicitarProduccion"].includes(a)) {
     const c = a !== "entrada" ? "productos" : "ingredientes";
@@ -1188,7 +1256,7 @@ function formulario(a, x = null) {
         x.vendedorUid,
       );
     campo("unidad", "Unidad del vehículo", "text", null, x.unidad || "");
-    if (a === "despachar") campo("ruta", "Ruta");
+    if (a === "despachar") campo("ruta", "Ruta", "text", [{id: "NORTE", nombre: "Norte"}, {id: "SUR", nombre: "Sur"}]);
   }
   if (a === "incidencia") campo("problema", "Describe el problema", "textarea");
   if (["ventaSucursal", "ajustarSucursal"].includes(a)) {
@@ -1399,10 +1467,7 @@ $("registro").onsubmit = async (e) => {
       a.comentarios = v("comentarios");
       if (gerente() && $("pedido-prueba"))
         a.esPrueba = $("pedido-prueba").checked;
-      a.detalles = [...$("detalles").children].map((row) => ({
-        productoId: row.querySelector("select").value,
-        cantidad: Number(row.querySelector("input").value),
-      }));
+      a.detalles = productosDelPedido();
       if (!a.detalles.length) throw Error("Agrega al menos un producto.");
       if (accion === "modificarPedido") a.pedidoId = registroId;
     }
@@ -1532,9 +1597,9 @@ $("cancelar").onclick = $("cerrar-form").onclick = () => {
   accion = "";
 };
 $("actualizar").onclick = refrescarSilencioso;
-$("buscar").oninput = pintar;
+$("buscar").oninput = () => { paginaAvisos = 1; pintar(); };
 for (const id of ["f-sucursal", "f-producto", "f-ruta", "f-estado"])
-  $(id).onchange = pintar;
+  $(id).onchange = () => { paginaAvisos = 1; pintar(); };
 $("reintentar").onclick = guardar;
 // Solicita al servidor el reporte Excel de la fecha seleccionada.
 $("descargar").onsubmit = async (e) => {
@@ -1709,8 +1774,10 @@ function vistaTotalPedido() {
   let total = 0,
     pendientes = 0;
   for (const fila of $("detalles").children) {
+    const casilla = fila.querySelector('input[type="checkbox"]');
+    if (casilla && !casilla.checked) continue;
     const id = fila.querySelector("select").value;
-    const cantidad = Number(fila.querySelector("input").value);
+    const cantidad = Number(fila.querySelector('input[type="number"]').value);
     const producto = catalogos.productos.find((p) => p.id === id);
     const anterior = editing?.detalles?.find((l) => l.productoId === id);
     const precio = anterior
@@ -1738,9 +1805,9 @@ function vistaTotalPedido() {
 
 // Avisos visuales: la primera lectura muestra historial; solo los nuevos abren una ventana.
 const AvisosWeb = (() => {
-  let vistos = new Set(), inicio = false, leyendo = false, generacion = 0;
+  let ultimoId = null, inicio = false, leyendo = false, generacion = 0;
   function reiniciar() {
-    generacion++; vistos = new Set(); inicio = false; leyendo = false;
+    generacion++; ultimoId = null; inicio = false; leyendo = false;
     $("avisos-emergentes").replaceChildren(); $("avisos-recientes").replaceChildren();
   }
   async function actualizar() {
@@ -1752,23 +1819,22 @@ const AvisosWeb = (() => {
       const filas = respuesta.filas.sort((a, b) => String(b.creado || "").localeCompare(String(a.creado || "")) || a.id.localeCompare(b.id));
       const panel = $("avisos-recientes"); panel.replaceChildren();
       if (!filas.length) nodo("p", "Sin alertas", panel);
-      for (const aviso of filas.slice(0, 5)) {
+      for (const aviso of filas.slice(0, 1)) {
         const item = nodo("div", undefined, panel); item.className = "aviso-reciente";
         nodo("strong", aviso.titulo || "Aviso", item);
         nodo("p", aviso.mensaje || "", item);
         nodo("small", hora(aviso.creado), item);
       }
-      for (const aviso of filas.slice().reverse()) {
-        if (inicio && !vistos.has(aviso.id)) emergente(aviso);
-        vistos.add(aviso.id);
-      }
+      const ultimo = filas[0];
+      if (inicio && ultimo && ultimo.id !== ultimoId) emergente(ultimo);
+      ultimoId = ultimo?.id || null;
       inicio = true;
     } catch { /* La siguiente actualización vuelve a consultar sin borrar el historial. */ }
     finally { if (turno === generacion) leyendo = false; }
   }
   function emergente(aviso) {
     const contenedor = $("avisos-emergentes");
-    while (contenedor.children.length >= 3) contenedor.firstElementChild.remove();
+    contenedor.replaceChildren();
     const item = nodo("div", undefined, contenedor); item.className = "aviso-emergente";
     nodo("strong", aviso.titulo || "Aviso", item);
     nodo("p", aviso.mensaje || "", item);
@@ -1778,3 +1844,9 @@ const AvisosWeb = (() => {
   }
   return { actualizar, reiniciar };
 })();
+
+$("ver-historial-avisos").onclick = () => abrir("notificaciones");
+for (const id of ["fecha-aviso", "tipo-aviso"]) $(id).onchange = () => { paginaAvisos = 1; pintar(); };
+$("limpiar-avisos").onclick = () => { $("fecha-aviso").value = ""; $("tipo-aviso").value = ""; paginaAvisos = 1; pintar(); };
+$("avisos-anterior").onclick = () => { paginaAvisos = Math.max(1, paginaAvisos - 1); pintar(); };
+$("avisos-siguiente").onclick = () => { paginaAvisos++; pintar(); };
