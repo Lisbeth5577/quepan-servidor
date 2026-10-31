@@ -17,6 +17,7 @@ function conWeb(
     "/web/dashboard-ui.js": "dashboard-ui.js",
     "/web/panaderia.css": "panaderia.css",
     "/web/pan-pixel.png": "pan-pixel.png",
+    "/web/logo-academico.png": "logo-academico.png",
   };
   const manejar = async (req, res) => {
     const url = new URL(req.url, origen);

@@ -286,3 +286,13 @@ th, td { border-color: #c4bbab; }
 
 nav button:hover { background: #d5dec9; color: #344c38; }
 nav button.activo:hover { background: #354c3b; color: #fffdf5; }
+
+/* Logo aportado: separado de la marca de la panadería. */
+.identidad-academica { float: right; width: 110px; margin: 0 0 12px 20px; text-align: center; }
+.identidad-academica img { display: block; width: 80px; height: 80px; object-fit: contain; background: #fff; margin: 0 auto; }
+.identidad-academica figcaption { font-size: 12px; margin-top: 4px; }
+header::after { content: ""; display: block; clear: both; }
+@media (max-width: 650px) {
+ .identidad-academica { width: 80px; margin-left: 12px; }
+ .identidad-academica img { width: 64px; height: 64px; }
+}
