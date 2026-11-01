@@ -29,10 +29,15 @@ async function iniciar() {
   const api = r("./index.js");
   const db = r("firebase-admin/firestore").getFirestore();
   const auth = r("firebase-admin/auth").getAuth();
-  await db.collection("productos").limit(1).get();
+  try { await db.collection("productos").limit(1).get(); }
+  catch (e) {
+    if (!require("./consultas.cjs").esCuota(e)) throw e;
+    require("./consultas.cjs").pausarLecturas(db,e);
+    console.error("Cuota temporal de Firestore agotada; se conserva el sitio y se pausarán lecturas.");
+  }
   const operar = crearManejador(
     (t) => auth.verifyIdToken(t, true),
-    (q) => api.operacion.run(q),
+    (q) => api.operacion.run(q).then(resultado => { require("./consultas.cjs").invalidarCache(db); return resultado; }),
     (q) =>
       require("./reporte_ordenado.cjs").generarReporte(
         db,

@@ -20,7 +20,7 @@ const Dashboard = (() => {
   }
   function pintar(x) {
     const m = x.mesResumen, t = x.total, sucursales = x.finanzas?.sucursales || [];
-    const pendientes = sucursales.some((s) => s.ventas.preciosPendientes || s.ventasSinClasificar);
+    const pendientes = sucursales.some((s) => s.ventas.preciosPendientes);
     const ingresos = sucursales.reduce((s, f) => s + f.ventas.subtotalConocidoCentavos, 0);
     const tarjetas = $("dash-cifras"); tarjetas.replaceChildren();
     for (const [titulo, valor] of [
@@ -48,7 +48,7 @@ const Dashboard = (() => {
     tabla("dash-finanzas", [
       ["Sucursal", (f) => f.nombre],
       ["Ventas", (f) => cantidad(f.numeroVentas)],
-      ["Ingresos", (f) => f.ventasSinClasificar ? "Pendiente" : dinero(f.ventas.totalCentavos)]
+      ["Ingresos", (f) => dinero(f.ventas.totalCentavos)]
     ], sucursales);
     tabla("dash-ranking", [
       ["Producto", (p) => p.nombre], ["Pedidos", (p) => cantidad(p.pedidos)],

@@ -116,7 +116,12 @@ async function token() {
   return sesion.id;
 }
 // Envía una consulta al servidor con la credencial de la sesión.
+let cuotaHasta = 0;
+const cambiosPendientes = new Set();
 async function api(url, opts = {}) {
+  if (Date.now() < cuotaHasta) {
+    const e = Error("La base de datos está temporalmente limitada. Tus registros se conservan."); e.http = 429; throw e;
+  }
   const r = await fetch(url, {
     ...opts,
     headers: { ...opts.headers, Authorization: "Bearer " + (await token()) },
@@ -126,6 +131,7 @@ async function api(url, opts = {}) {
   if (!r.ok) {
     const e = Error(x.error?.message || "No se completó la operación");
     e.http = r.status;
+    if (r.status === 429) cuotaHasta = Date.now() + 60000;
     throw e;
   }
   return x;
@@ -215,6 +221,7 @@ $("login").onsubmit = async (e) => {
   }
 };
 $("salir").onclick = () => {
+  clearTimeout(refreshTimer); refreshTimer = null; cambiosPendientes.clear();
   AvisosWeb.reiniciar();
   stream?.abort();
   stream = null;
@@ -230,7 +237,7 @@ $("salir").onclick = () => {
   if (window.QuePanAndroid) window.QuePanAndroid.cerrarSesion();
   mensaje("Sesión cerrada.");
 };
-async function cargarCatalogos() {
+async function cargarCatalogos(cambios = []) {
   if (repartidor()) {
     catalogos = {};
     return;
@@ -242,20 +249,21 @@ async function cargarCatalogos() {
     ...(gerente() ? ["ingredientes", "usuarios", "recetas"] : []),
   ];
   await Promise.all(
-    cs.map(async (c) => {
+    cs.filter(c => !cambios.length || cambios.includes(c)).map(async (c) => {
       catalogos[c] = (await api("/api/datos?modulo=" + c)).filas;
     }),
   );
 }
 let refrescando = false;
-async function refrescarSilencioso() {
-  if (!perfil || refrescando || ocupado) return;
+async function refrescarSilencioso(cambios = []) {
+  if (!perfil || refrescando || ocupado || Date.now() < cuotaHasta) return;
+  cambios = Array.isArray(cambios) ? cambios : [];
   refrescando = true;
   try {
-    await cargarCatalogos();
+    await cargarCatalogos(cambios);
     if (modulo === "dashboard") {
       await Dashboard.cargar(true);
-    } else if (modulo !== "reportes") {
+    } else if (modulo !== "reportes" && (!cambios.length || cambios.includes(modulo) || cambios.some(c => ["productos", "sucursales", "pedidos"].includes(c)))) {
       datos = (await api("/api/datos?modulo=" + modulo)).filas;
       pintar();
     }
@@ -272,6 +280,9 @@ async function refrescarSilencioso() {
   }
 }
 async function conectar() {
+  if (!perfil) return;
+  if (Date.now() < cuotaHasta) { setTimeout(conectar, 60000); return; }
+  let espera = 10000;
   stream?.abort();
   const controller = new AbortController();
   stream = controller;
@@ -280,6 +291,7 @@ async function conectar() {
       headers: { Authorization: "Bearer " + (await token()) },
       signal: controller.signal,
     });
+    if (r.status === 429) { cuotaHasta = Date.now() + 60000; espera = 60000; }
     if (!r.ok) throw Error("Conexión interrumpida");
     $("conexion").textContent = "● Conectado en tiempo real";
     const reader = r.body.getReader(),
@@ -293,10 +305,19 @@ async function conectar() {
       while ((i = buffer.indexOf("\n\n")) >= 0) {
         const event = buffer.slice(0, i);
         buffer = buffer.slice(i + 2);
+        if (event.includes("event: pausa")) {
+          cuotaHasta = Date.now() + 60000; espera = 60000;
+          $("conexion").textContent = "Actualización pausada por límite temporal de la base de datos.";
+        }
         if (event.includes("event: actualizar")) {
-          AvisosWeb.actualizar();
-          clearTimeout(refreshTimer);
-          refreshTimer = setTimeout(refrescarSilencioso, 300);
+          let cambios = [];
+          try { cambios = JSON.parse(event.split("\n").find(l=>l.startsWith("data: "))?.slice(6) || "{}").colecciones || []; } catch {}
+          if (!cambios.length || cambios.includes("notificaciones")) AvisosWeb.actualizar();
+          cambios.forEach(c=>cambiosPendientes.add(c));
+          if (!refreshTimer) refreshTimer = setTimeout(() => {
+            refreshTimer = null; const lista = [...cambiosPendientes]; cambiosPendientes.clear();
+            refrescarSilencioso(lista);
+          }, 1000);
         }
       }
     }
@@ -304,7 +325,7 @@ async function conectar() {
     if (e.name === "AbortError") return;
     $("conexion").textContent = "Reconectando disponibilidad…";
   }
-  if (perfil && stream === controller) setTimeout(conectar, 3000);
+  if (perfil && stream === controller) setTimeout(conectar, espera);
 }
 // Cambia la sección visible y pide sus datos al servidor.
 async function abrir(m) {
@@ -1439,7 +1460,7 @@ async function guardar() {
     await abrir(modulo);
     mensaje(r.result.mensaje);
   } catch (e) {
-    if (e.http >= 400 && e.http < 500) {
+    if (e.http >= 400 && e.http < 500 && e.http !== 429) {
       pendiente = null;
       sessionStorage.removeItem("quepanPendiente");
     } else $("reintentar").hidden = false;

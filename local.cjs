@@ -120,13 +120,14 @@ function crearManejador(verificar, operar, reportar, origenWeb) {
           ? "unauthenticated"
           : fase === "cuerpo"
             ? "invalid-argument"
-            : e.code || "internal";
+            : require("./consultas.cjs").esCuota(e) ? "resource-exhausted" : e.code || "internal";
       const status = estados[code] || 500;
+      if (code === "resource-exhausted") res.setHeader("Retry-After", "60");
       responder(status, {
         error: {
           status: code,
           message:
-            status === 500
+            code === "resource-exhausted" ? require("./consultas.cjs").mensajeCuota : status === 500
               ? "No se pudo confirmar. Reintenta la misma solicitud."
               : fase === "identidad"
                 ? "Sesion no valida o vencida"
@@ -147,13 +148,14 @@ function iniciarAvisos(api, db, logger = console) {
   const paradas = [],
     reintentos = new Set();
   let cola = Promise.resolve(),
-    cerrado = false;
+    cerrado = false, reinicio;
   const encolar = (fn, intento = 0) => {
     cola = cola
       .then(async () => {
         if (!cerrado) await fn();
       })
-      .catch(() => {
+      .catch((e) => {
+        if (require("./consultas.cjs").esCuota(e)) { error(); return; }
         logger.error(
           "Aviso pendiente; se reintentara sin registrar credenciales.",
         );
@@ -169,8 +171,12 @@ function iniciarAvisos(api, db, logger = console) {
         }
       });
   };
-  const error = () =>
-    logger.error("Escucha de Firebase interrumpida. Revisa conexion y acceso.");
+  const error = () => {
+    logger.error("Escucha de Firebase pausada; se reintentará sin consultas continuas.");
+    paradas.splice(0).forEach(stop=>stop());
+    if (!cerrado && !reinicio) reinicio = setTimeout(() => { reinicio = null; if (!cerrado) conectarEscuchas(); }, 300000);
+  };
+  function conectarEscuchas() {
   paradas.push(
     db.collection("productos").onSnapshot(
       (s) =>
@@ -227,8 +233,11 @@ function iniciarAvisos(api, db, logger = console) {
         error,
       ),
   );
+  }
+  conectarEscuchas();
   return async () => {
     cerrado = true;
+    clearTimeout(reinicio);
     paradas.forEach((stop) => stop());
     reintentos.forEach(clearTimeout);
     await cola;

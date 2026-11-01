@@ -313,8 +313,8 @@ function resumir(datos, mes) {
     alertasIngredientes,
   };
 }
-async function generarDashboard(db, uid, mes) {
-  const u = (await db.doc("usuarios/" + uid).get()).data();
+async function generarDashboard(db, uid, mes, usuarioVerificado) {
+  const u = usuarioVerificado || (await db.doc("usuarios/" + uid).get()).data();
   d.gerente(u);
   mesValido(mes);
   const cs = [

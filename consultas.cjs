@@ -25,7 +25,45 @@ const listas = [
   "inventario_sucursales",
   "salidas_sucursales",
 ];
+// Una copia breve por servidor evita repetir la misma consulta entre usuarios.
+const memorias = new WeakMap();
+function memoria(db) {
+  if (!memorias.has(db)) memorias.set(db, {listas:new Map(), perfiles:new Map(), pausa:0, activa:false});
+  return memorias.get(db);
+}
+function activarCache(db) { memoria(db).activa = true; }
+function invalidarCache(db) { memoria(db).listas.clear(); memoria(db).perfiles.clear(); }
+function esCuota(e) { return e?.code === 8 || e?.code === 429 || e?.code === "resource-exhausted" || e?.code === "RESOURCE_EXHAUSTED"; }
+const mensajeCuota = "Se agotó temporalmente la cuota gratuita de la base de datos. Tus registros se conservan. Intenta cuando Firebase restablezca el servicio.";
+function pausarLecturas(db, e) { if (esCuota(e)) memoria(db).pausa = Date.now() + 60000; }
+function comprobarPausa(db) {
+  if (memoria(db).pausa > Date.now()) throw new d.ErrorNegocio(mensajeCuota, "resource-exhausted");
+}
+function actualizarCache(db, c, instantanea) {
+  const m = memoria(db);
+  m.listas.set(c, {hasta:Date.now()+30000, filas:instantanea.docs.map(x=>({id:x.id,...x.data()}))});
+  if (c === "usuarios") m.perfiles.clear();
+}
+async function perfilUsuario(db, uid) {
+  comprobarPausa(db);
+  const m = memoria(db), previo = m.perfiles.get(uid);
+  if (previo && previo.hasta > Date.now()) return previo.promesa;
+  const entry = {hasta:Date.now()+10000};
+  entry.promesa = db.doc("usuarios/"+uid).get().then(s=>s.data()).catch(e=>{m.perfiles.delete(uid);pausarLecturas(db,e);throw e});
+  m.perfiles.set(uid,entry);
+  if (m.perfiles.size > 200) m.perfiles.delete(m.perfiles.keys().next().value);
+  return entry.promesa;
+}
 async function todos(db, c) {
+  comprobarPausa(db);
+  if (!memoria(db).activa) return leerTodos(db,c);
+  const m = memoria(db), previo = m.listas.get(c);
+  if (previo && previo.hasta > Date.now()) return previo.promesa || previo.filas;
+  const entry = {hasta:Date.now()+30000};
+  entry.promesa = leerTodos(db,c).catch(e=>{if(m.listas.get(c)===entry)m.listas.delete(c);pausarLecturas(db,e);throw e});
+  m.listas.set(c,entry); return entry.promesa;
+}
+async function leerTodos(db, c) {
   const out = [];
   let last;
   do {
@@ -43,13 +81,13 @@ function puedeVerAviso(n, u, uid) {
   if (n.tipo === "STOCK_SUCURSAL") return u.rol === "GERENTE" || (u.rol === "VENDEDOR" && Boolean(u.sucursalId) && n.sucursalId === u.sucursalId);
   return u.rol === "GERENTE";
 }
-async function consultar(db, uid, modulo) {
+async function consultar(db, uid, modulo, usuarioVerificado) {
   d.exigir(
     listas.includes(modulo),
     "Consulta no disponible",
     "invalid-argument",
   );
-  const u = (await db.doc("usuarios/" + uid).get()).data();
+  const u = usuarioVerificado || (await db.doc("usuarios/" + uid).get()).data();
   d.perfil(u);
   const gerente = u.rol === "GERENTE";
   const repartidor = u.rol === "REPARTIDOR";
@@ -231,4 +269,4 @@ async function consultar(db, uid, modulo) {
     miSucursal: u.sucursalId || null,
   };
 }
-module.exports = { consultar, todos, serial, puedeVerAviso };
+module.exports = { consultar, todos, serial, puedeVerAviso, actualizarCache, perfilUsuario, pausarLecturas, esCuota, mensajeCuota, activarCache, invalidarCache };
