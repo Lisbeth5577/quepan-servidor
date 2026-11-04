@@ -19,7 +19,7 @@ async function usuario(request) {
   d.perfil(p);
   return { ...p, uid: request.auth.uid };
 }
-// Todas las mutaciones son autenticadas. El cliente nunca descuenta stock.
+
 const operar = require("./negocio.cjs").crearNegocio(db);
 exports.operacion = onCall({ region, maxInstances: 3 }, async (request) => {
   try {
@@ -34,7 +34,7 @@ exports.operacion = onCall({ region, maxInstances: 3 }, async (request) => {
     );
   }
 });
-// Una alerta por episodio: solo se abre al cruzar de normal a minimo.
+
 exports.alertaStock = onDocumentWritten(
   { document: "productos/{productoId}", region, maxInstances: 3 },
   async (event) => {
@@ -78,7 +78,7 @@ exports.alertaStock = onDocumentWritten(
 exports.avisoIncidencia = onDocumentCreated(
   { document: "incidencias/{id}", region, maxInstances: 3 },
   async (event) => {
-    // ID estable para que un reintento del disparador no duplique el aviso.
+   
     try {
       await ref("notificaciones", "incidencia_" + event.params.id).create({
         tipo: "INCIDENCIA",
