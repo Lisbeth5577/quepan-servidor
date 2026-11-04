@@ -1,6 +1,5 @@
 "use strict";
-// El alojamiento ofrece HTTPS publico y reenvia a este puerto interno.
-// Las mismas reglas de identidad, permisos y stock del servidor local se conservan.
+
 const http = require("node:http");
 const fs = require("node:fs");
 const { createRequire } = require("node:module");
@@ -14,7 +13,7 @@ async function iniciar() {
     process.env.FIREBASE_AUTH_EMULATOR_HOST
   )
     throw Error("No usar emuladores en el alojamiento real");
-  // Solo una cuenta de servicio del proyecto: nunca la sesion personal de Google.
+ 
   const archivo = process.env.GOOGLE_APPLICATION_CREDENTIALS;
   const credencial = JSON.parse(fs.readFileSync(archivo, "utf8"));
   if (
@@ -55,7 +54,7 @@ async function iniciar() {
   const servidor = http.createServer(manejadorWeb);
   servidor.requestTimeout = 30000;
   servidor.headersTimeout = 10000;
-  // El acceso anterior conserva la actualización, sin duplicar los emisores de avisos.
+ 
   const pararAvisos = process.env.RENDER_EXTERNAL_HOSTNAME === "sipropan-servidor.onrender.com" ? async () => {} : iniciarAvisos(api, db);
   servidor.listen(puerto, "0.0.0.0", () =>
     console.log("QuePan listo detras del HTTPS del alojamiento."),
