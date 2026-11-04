@@ -1,6 +1,4 @@
 "use strict";
-// XLSX (Office Open XML): se entrega un libro real, sin macros ni fórmulas recibidas del usuario.
-// Se usan únicamente las funciones ZIP/deflate de Node; no requiere instalar Excel en el servidor.
 const { deflateRawSync } = require("node:zlib");
 const xml = (s) =>
   String(s ?? "")
