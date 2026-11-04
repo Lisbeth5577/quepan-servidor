@@ -1,7 +1,7 @@
 "use strict";
 const fs = require("node:fs");
 const { createHash } = require("node:crypto");
-// Solo este APK publico. Ninguna ruta proporcionada por el visitante se abre como archivo.
+
 function conDescargas(operar, archivo) {
   const datos = fs.readFileSync(archivo);
   const sha = createHash("sha256").update(datos).digest("hex");
