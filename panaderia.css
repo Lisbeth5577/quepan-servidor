@@ -1,5 +1,5 @@
 @charset "UTF-8";
-/* 1. Apariencia general: fondo blanco y letra común. */
+
 body {
   margin: 16px;
   color: #222;
@@ -8,7 +8,7 @@ body {
   font-size: 16px;
   line-height: 1.5;
 }
-/* No mostrar secciones hasta que JavaScript las habilite. */
+
 [hidden] {
   display: none !important;
 }
@@ -31,7 +31,7 @@ h4 {
 a {
   color: #244b31;
 }
-/* 2. Formularios: una etiqueta y un campo por fila. */
+
 label {
   display: block;
   margin: 10px 0;
@@ -89,8 +89,7 @@ textarea:focus-visible {
 #login {
   max-width: 460px;
 }
-/* 3. Menú de botones y mensajes. */
-/* Dos zonas: menú a la izquierda y contenido a la derecha. */
+
 .workspace {
   display: flex;
   gap: 24px;
@@ -102,7 +101,7 @@ nav {
   margin: 18px 0;
   padding: 0;
 }
-/* Cada botón ocupa una fila completa del menú. */
+
 nav button {
   width: 100%;
   box-sizing: border-box;
@@ -142,7 +141,7 @@ nav button.activo {
 #mensaje.exito {
   color: #244b31;
 }
-/* 4. Tablas: encabezado claro, bordes y espacio entre datos. */
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -174,7 +173,7 @@ td {
 .low {
   color: #8b1b1b;
 }
-/* 5. Cada sección sigue el orden normal de la página. */
+
 .card {
   margin: 18px 0;
   padding: 12px 0;
@@ -217,7 +216,7 @@ footer {
   margin-top: 24px;
   padding-top: 10px;
 }
-/* En el teléfono solo se ajusta el espacio; no cambia la funcionalidad. */
+
 @media (max-width: 600px) {
   body {
     margin: 10px;
@@ -229,8 +228,7 @@ footer {
   td {
     padding: 6px;
   }
-  /* En una pantalla pequeña el menú sigue vertical y alineado a la izquierda.
-     El contenido va debajo para que los formularios tengan espacio. */
+
   .workspace {
     display: block;
   }
@@ -243,7 +241,7 @@ footer {
   }
 }
 
-/* 6. Colores vintage: verde musgo, crema, café y palo rosa. */
+
 body { background: #f6f2e9; color: #493b31; }
 header { background: #49634f; color: #fff9ed; padding: 18px 24px; border-bottom: 5px solid #b98983; }
 header h1 { margin: 0 0 6px; }
@@ -269,7 +267,7 @@ th, td { border-color: #c4bbab; }
 nav button:hover { background: #d5dec9; color: #344c38; }
 nav button.activo:hover { background: #354c3b; color: #fffdf5; }
 
-/* Logo aportado: separado de la marca de la panadería. */
+
 .identidad-academica { float: right; width: 110px; margin: 0 0 12px 20px; text-align: center; }
 .identidad-academica img { display: block; width: 80px; height: 80px; object-fit: contain; background: #fff; margin: 0 auto; }
 .identidad-academica figcaption { font-size: 12px; margin-top: 4px; }
@@ -279,7 +277,7 @@ header::after { content: ""; display: block; clear: both; }
  .identidad-academica img { width: 64px; height: 64px; }
 }
 
-/* 7. Acceso de dos paneles: presentación verde y formulario crema. */
+
 .login-abierto { margin: 0; background: #f5f3ed; }
 .login-abierto > header, .login-abierto > footer { display: none; }
 .login-abierto main { padding: 32px 20px; }
@@ -325,7 +323,7 @@ header::after { content: ""; display: block; clear: both; }
  .login-campos { margin-top: 26px; }
 }
 
-/* 8. Dashboard puntual: cifras y tres tablas breves. */
+
 .resumen-mes { max-width: 200px; margin-top: 0; }
 #dash-actualizado:empty, #mensaje:empty { display: none; }
 .resumen-tarjetas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
