@@ -1,5 +1,5 @@
 "use strict";
-// Cada solicitud se confirma con sus reservas, inventario e historial en una transacción.
+
 const d = require("./domain");
 const dinero = require("./precios.cjs");
 const { FieldValue } = require("firebase-admin/firestore");
@@ -184,7 +184,7 @@ function crearNegocio(db, { reloj = () => new Date() } = {}) {
           const previo = anteriores.find(
             (fila) => fila.productoId === l.productoId,
           );
-          // En una edición se conserva el precio original, incluso si estaba pendiente.
+        
           const precioUnitarioCentavos = previo
             ? (previo.precioUnitarioCentavos ?? null)
             : dinero.precio(p.precioVenta);
@@ -199,7 +199,7 @@ function crearNegocio(db, { reloj = () => new Date() } = {}) {
         }
         return out;
       }
-      // Complementos del paquete integrado. No reemplazan los movimientos existentes.
+   
       if (
         [
           "solicitarProduccion",
@@ -417,7 +417,7 @@ function crearNegocio(db, { reloj = () => new Date() } = {}) {
           solicitanteUid: antes?.solicitanteUid || uid,
           fechaEntrega: date,
           comentarios,
-          // Autorizar no despacha ni vuelve a reservar. Editar exige revisar la nueva versión.
+          
           autorizacion: "PENDIENTE",
           autorizadoPor: null,
           autorizado: null,
@@ -1070,7 +1070,7 @@ function crearNegocio(db, { reloj = () => new Date() } = {}) {
           usuarioUid: uid,
           creado: stamp(),
         });
-      // Todas las lecturas anteriores terminan antes de aplicar la primera escritura.
+      
       writes.forEach((fn) => fn());
       tx.create(op, {
         accion: action,
