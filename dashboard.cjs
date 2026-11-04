@@ -1,5 +1,5 @@
 "use strict";
-// Resumen de solo lectura. No suma versiones del historial ni inventa importes de ventas.
+
 const dinero = require("./precios.cjs");
 const d = require("./domain"),
   { todos } = require("./consultas.cjs");
