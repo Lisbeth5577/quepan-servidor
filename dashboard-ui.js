@@ -1,5 +1,5 @@
 "use strict";
-// Resumen breve. No cambia datos ni sustituye valores reales por ceros.
+
 const Dashboard = (() => {
   let peticion = 0;
   const cantidad = (n) => new Intl.NumberFormat("es-GT", { maximumFractionDigits: 2 }).format(n || 0);
