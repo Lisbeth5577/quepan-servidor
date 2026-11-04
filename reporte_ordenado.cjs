@@ -224,7 +224,7 @@ async function generarReporte(db, uid, fecha, tipo = "todo") {
         h.accion === "cancelarPedido" ? p.motivoCancelacion : p.comentarios,
     });
   }
-  // Los registros anteriores se muestran con el estado conservado; no se inventan versiones.
+
   for (const p of data.pedidos) {
     for (const [cat, campo, act] of [
       ["pedidos", "creado", "crearPedido"],
