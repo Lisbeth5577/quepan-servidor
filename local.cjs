@@ -1,5 +1,5 @@
 "use strict";
-// Servidor HTTPS local. Verifica identidad; reutiliza las mismas transacciones.
+
 const https = require("node:https");
 const fs = require("node:fs");
 const { createRequire } = require("node:module");
@@ -35,7 +35,7 @@ function crearManejador(verificar, operar, reportar, origenWeb) {
       return responder(404, {
         error: { status: "not-found", message: "Ruta no disponible" },
       });
-    // La app nativa y Postman no envian Origin. No se admite uso desde otras webs.
+    
     if (req.headers.origin && req.headers.origin !== origenWeb)
       return responder(403, {
         error: {
@@ -143,8 +143,7 @@ function crearServidor(tls, verificar, operar, reportar) {
   return https.createServer(tls, crearManejador(verificar, operar, reportar));
 }
 function iniciarAvisos(api, db, logger = console) {
-  // Escuchas en tiempo real: no consultamos todo el inventario repetidamente.
-  // Al reiniciar, se revisan stock y pendientes para recuperar eventos omitidos.
+
   const paradas = [],
     reintentos = new Set();
   let cola = Promise.resolve(),
@@ -262,7 +261,7 @@ async function iniciar() {
   const { getAuth } = r("firebase-admin/auth"),
     { getFirestore } = r("firebase-admin/firestore");
   const db = getFirestore();
-  // Comprobar acceso antes de ofrecer el servicio.
+  
   await db.collection("productos").limit(1).get();
   const server = crearServidor(
     {
