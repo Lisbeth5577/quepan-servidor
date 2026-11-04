@@ -1,5 +1,5 @@
 "use strict";
-// Reglas pequenas que se pueden explicar y probar sin una cuenta de Firebase.
+
 class ErrorNegocio extends Error {
   constructor(message, code = "failed-precondition") {
     super(message);
