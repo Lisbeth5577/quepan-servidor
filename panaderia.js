@@ -1,5 +1,5 @@
 "use strict";
-// Una interfaz compartida por navegador y APK; el servidor valida cada operación.
+
 const $ = (id) => document.getElementById(id);
 const API_KEY = "AIzaSyAyK87A9hF5j3s6pY_Zcp2s3zO-Itk-GAc";
 let sesion = null,
@@ -35,7 +35,7 @@ const nombres = {
   alertas: "Alertas de producción",
   notificaciones: "Notificaciones",
 };
-// null es precio pendiente. Se muestran quetzales sin confundir vacío con cero.
+
 function quetzales(centavos) {
   return centavos == null
     ? "Pendiente de precio"
@@ -66,7 +66,7 @@ function mensaje(s, error = false) {
   $("mensaje").textContent = s;
   $("mensaje").className = error ? "error" : "exito";
 }
-// Crea un elemento HTML y escribe texto sin interpretarlo como código.
+
 function nodo(tag, texto, parent) {
   const e = document.createElement(tag);
   if (texto !== undefined) e.textContent = texto;
@@ -115,7 +115,7 @@ async function token() {
   }
   return sesion.id;
 }
-// Envía una consulta al servidor con la credencial de la sesión.
+
 let cuotaHasta = 0;
 const cambiosPendientes = new Set();
 async function api(url, opts = {}) {
@@ -136,7 +136,7 @@ async function api(url, opts = {}) {
   }
   return x;
 }
-// Al enviar el formulario de acceso se comprueba la cuenta.
+
 $("login").onsubmit = async (e) => {
   e.preventDefault();
   if (ocupado) return;
@@ -327,7 +327,7 @@ async function conectar() {
   }
   if (perfil && stream === controller) setTimeout(conectar, espera);
 }
-// Cambia la sección visible y pide sus datos al servidor.
+
 async function abrir(m) {
   modulo = m;
   datos = [];
@@ -382,7 +382,7 @@ async function abrir(m) {
     mensaje(e.message, true);
   }
 }
-// Encabezados y valores que se mostrarán en cada tabla.
+
 const cols = {
   solicitudes_produccion: [
     ["Fecha", (x) => hora(x.creado)],
@@ -707,7 +707,7 @@ function fechaAviso(aviso) {
 function coincideAviso(aviso, fecha, tipo) {
   return (!fecha || fechaAviso(aviso) === fecha) && (!tipo || tipoAviso(aviso) === tipo);
 }
-// Recorre los datos y construye las filas de la tabla.
+
 function pintar() {
   const cs = repartidor() && modulo !== "notificaciones" ? columnasReparto[modulo] : cols[modulo];
   if (!cs) return;
@@ -1010,7 +1010,7 @@ function detalle(l = {}) {
   sel.onchange = actualizarLimites;
   actualizarLimites();
 }
-// Cada casilla agrega un producto distinto al mismo pedido.
+
 function detallePedido(producto, anterior) {
   const fila = nodo("div", undefined, $("detalles"));
   fila.className = "pedido-producto";
@@ -1080,7 +1080,7 @@ function actualizarLimites() {
   }
   vistaTotalPedido();
 }
-// Prepara los campos del formulario para la acción seleccionada.
+
 function formulario(a, x = null) {
   if (ocupado || pendiente) {
     mensaje("Completa la solicitud pendiente antes de iniciar otra.", true);
@@ -1441,7 +1441,7 @@ async function enviar(a) {
   );
   await guardar();
 }
-// Guarda la solicitud. El servidor verifica permisos y existencias.
+
 async function guardar() {
   if (ocupado || !pendiente) return;
   ocupado = true;
@@ -1687,7 +1687,7 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden && perfil) refrescarSilencioso();
 });
 
-// Vista previa educativa; la transacción del servidor vuelve a validar todos los saldos.
+
 function vistaConsumo() {
   const box = $("vista-consumo");
   if (!box || accion !== "producir") return;
@@ -1788,7 +1788,7 @@ function vistaConsumo() {
   guardar.disabled = !valido;
 }
 
-// El total visible es una ayuda. El servidor calcula el importe definitivo.
+
 function vistaTotalPedido() {
   const salida = $("total-pedido");
   if (!salida || !["crearPedido", "modificarPedido"].includes(accion)) return;
@@ -1825,7 +1825,7 @@ function vistaTotalPedido() {
     : "Total del pedido: " + quetzales(total);
 }
 
-// Avisos visuales: la primera lectura muestra historial; solo los nuevos abren una ventana.
+
 const AvisosWeb = (() => {
   let ultimoId = null, inicio = false, leyendo = false, generacion = 0;
   function reiniciar() {
