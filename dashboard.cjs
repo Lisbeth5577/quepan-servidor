@@ -53,7 +53,7 @@ function resumir(datos, mes) {
     inventario_sucursales: inventario = [],
     incidencias = [],
   } = datos;
-  // La usuaria puede conservar pedidos de prueba sin mezclarlos con operaciones reales.
+ 
   const pedidosPrueba = pedidosGuardados.filter((x) => x.esPrueba === true);
   const pedidos = pedidosGuardados.filter((x) => x.esPrueba !== true);
   const idsPrueba = new Set(pedidosPrueba.map((x) => x.id));
@@ -118,7 +118,7 @@ function resumir(datos, mes) {
     a.pedidos++;
     porSucursal.set(pedido.sucursalId, a);
   }
-  // Ordenar por número de pedidos permite comparar productos con unidades distintas.
+  
   const masPedidos = [...ranking.values()].sort(
     (a, b) => b.pedidos - a.pedidos || a.nombre.localeCompare(b.nombre, "es"),
   );
