@@ -1,7 +1,7 @@
 "use strict";
 const d = require("./domain");
 
-// Guatemala usa UTC-6. El limite final es exclusivo: no mezcla dos dias.
+
 function limites(fecha) {
   d.exigir(
     typeof fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(fecha),
@@ -135,7 +135,7 @@ async function generarReporte(db, uid, fecha, tipo = "todo") {
       ].filter(Boolean),
     ),
   ].filter((id) => !pedidos.has(id));
-  // Algunas operaciones apuntan a producciones o movimientos, no a pedidos.
+
   for (let i = 0; i < ids.length; i += 100) {
     const docs = await db.getAll(
       ...ids.slice(i, i + 100).map((id) => db.collection("pedidos").doc(id)),
@@ -231,7 +231,7 @@ async function generarReporte(db, uid, fecha, tipo = "todo") {
     usuario: o.usuarioUid,
     detalle: o.resultado?.mensaje || "",
   }));
-  // Compatibilidad con pedidos antiguos sin una entrada en operaciones.
+  
   for (const [lista, accion, campo] of [
     [despachados, "despachar", "despachado"],
     [entregados, "entregar", "entregado"],
@@ -452,7 +452,7 @@ async function generarReporte(db, uid, fecha, tipo = "todo") {
     "\r\n";
   return { archivo: `SIPROPAN_diario_${fecha}.csv`, csv, resumen };
 }
-// Una tabla por categoria: solo sus filas y las columnas que ayudan a leerla.
+
 const CATEGORIAS = {
   pedidos: { secciones: ["PEDIDOS CREADOS"], columnas: [1,3,9,4,5,6,7,12] },
   programados: { secciones: ["PEDIDOS PROGRAMADOS"], columnas: [3,9,4,5,6,7,12] },
@@ -473,7 +473,7 @@ function listadoSeparado(tipo, fecha, filas, resumen) {
   const config = CATEGORIAS[tipo];
   d.exigir(config, "Tipo de listado no valido", "invalid-argument");
   const seleccion = filas.filter(f => config.secciones.includes(f[0]));
-  // Fecha/hora local ISO permite ordenar cronologicamente sin mezclar secciones.
+  
   seleccion.sort((a,b) => a[1].localeCompare(b[1]) || String(a[3] || a[2]).localeCompare(String(b[3] || b[2])) || a[4].localeCompare(b[4]));
   const tabla = [config.columnas.map(i => TITULOS[i]), ...seleccion.map(f => config.columnas.map(i => f[i]))];
   return { archivo: `SIPROPAN_${tipo}_${fecha}.csv`,
