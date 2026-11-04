@@ -1,5 +1,5 @@
 "use strict";
-// Dinero en centavos enteros. null significa precio pendiente, nunca cero.
+
 const d = require("./domain");
 function precio(valor) {
   if (valor === null || valor === undefined || valor === "") return null;
@@ -38,7 +38,7 @@ function sumar(lineas, campo = "importeCentavos") {
   };
 }
 module.exports = { precio, importe, sumar };
-// Resume únicamente importes guardados; nunca aplica precios actuales a registros antiguos.
+
 function resumenSucursales({
   sucursales,
   pedidos,
