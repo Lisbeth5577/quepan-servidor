@@ -11,4 +11,4 @@ Descargar Android: https://quepan-panaderia-san-carlos.onrender.com/
 - vendedor.heydi@quepan.example
 - vendedor.terminal@quepan.example
 
-Usa la misma contraseña que elegiste. No se incluyen contraseñas en esta entrega. Los correos son identificadores de demostración, no buzones de correo.
+Se Usa la misma contraseña. Los correos son identificadores de demostración, no buzones de correo.
